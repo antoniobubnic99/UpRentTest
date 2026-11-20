@@ -1,17 +1,19 @@
 # Optimizacijska logika
 
-## Problem
+> **Traženo vs. dodatno.** Sekcije 1–4 opisuju rješenje zadatka (podaci iz zadatka, egzaktni optimum). Sekcija 5 opisuje dodatne mogućnosti iz druge faze: pauzu, vrijeme utovara/istovara po nalogu, više vozila, heuristiku i stvarnu kartu. Uz zadane postavke rezultat za podatke iz zadatka je nepromijenjen: **200,1 km**.
 
-Ovo je problem preuzimanja i isporuke s kapacitetima (*Capacitated Pickup and Delivery Problem*) za dva vozila, uz:
+## 1. Problem
 
-- nosivost u kg i najveći broj strojeva u kamionu istodobno
-- preuzimanje prije isporuke, i to istim kamionom
+Ovo je problem preuzimanja i isporuke s kapacitetima (*Capacitated Pickup and Delivery Problem*), uz:
+
+- nosivost u kg i najveći broj strojeva u vozilu istodobno
+- preuzimanje prije isporuke, i to istim vozilom
 - obavezan polazak iz baze i povratak u bazu
 - dnevni limit radnog vremena vozača od 9 h (60 km/h, 20 min po utovaru ili istovaru)
 
 Cilj: izvršiti što više naloga, a među takvim rasporedima odabrati onaj s najmanjom ukupnom kilometražom.
 
-## Pretpostavke
+## 2. Pretpostavke
 
 1. **Dnevni limit od 9 h** po zadanoj postavci znači **ukupno radno vrijeme vozača**: vrijeme vožnje (km / 60 km/h) plus 20 min za svako preuzimanje i svaku isporuku. Zadatak se može čitati i kao "9 h same vožnje", pa aplikacija nudi prekidač s tri načina: *vožnja + utovar/istovar*, *samo vožnja* i *bez limita*.
 2. **Udaljenost** je euklidska. Svaka dionica se zaokružuje na 0,1 km, a ukupna kilometraža je zbroj zaokruženih dionica. Interno se sve računa u cijelim desetinkama kilometra, pa nema grešaka zaokruživanja s pomičnim zarezom.
@@ -19,22 +21,22 @@ Cilj: izvršiti što više naloga, a među takvim rasporedima odabrati onaj s na
 4. Utovar i istovar na istoj lokaciji broje se kao zasebne radnje, po 20 min svaka.
 5. Dvije radnje na istoj lokaciji imaju dionicu od 0 km.
 
-## Algoritam
+## 3. Algoritam (egzaktni)
 
 Podataka je malo (10 naloga, 2 kamiona), pa umjesto heuristike koristimo **egzaktni algoritam** koji garantira optimum.
 
-### 1. Najkraća ruta za svaki podskup naloga, po kamionu
+### 3.1 Najkraća ruta za svaki podskup naloga, po vozilu
 
 Dinamičko programiranje nad stanjima:
 
 ```
 stanje = (trenutna lokacija, status svakog naloga)
-status ∈ { 0 = čeka preuzimanje, 1 = u kamionu, 2 = isporučen / nije u ovoj ruti }
+status ∈ { 0 = čeka preuzimanje, 1 = u vozilu, 2 = isporučen / nije u ovoj ruti }
 ```
 
 Iz stanja su dopušteni ovi prijelazi:
 
-- **preuzimanje** naloga sa statusom 0, ako ukupna težina i broj strojeva nakon utovara ostaju unutar granica kamiona
+- **preuzimanje** naloga sa statusom 0, ako ukupna težina i broj strojeva nakon utovara ostaju unutar granica vozila
 - **isporuka** naloga sa statusom 1
 - **povratak u bazu** kad su svi nalozi u statusu 2
 
@@ -42,48 +44,41 @@ Vrijednost stanja je najkraća preostala udaljenost. Status 2 služi i kao "nije
 
 Ograničenja nosivosti i broja strojeva provjeravaju se pri svakom prijelazu, pa nijedna ruta koju DP vrati ne može ih prekršiti. Isto vrijedi za redoslijed preuzimanja i isporuke.
 
-Za svaki podskup se zatim provjerava dnevni limit. Broj radnji je fiksan (2 po nalogu), pa je najkraća ruta ujedno i najbrža. Podskupovi koji prelaze 9 h odbacuju se.
+Za svaki podskup se zatim provjerava dnevni limit. Vrijeme utovara i istovara za zadani podskup je konstanta, pa je najkraća ruta ujedno i najbrža. Podskupovi koji prelaze 9 h odbacuju se.
 
-### 2. Raspodjela naloga na kamione
+### 3.2 Raspodjela naloga na vozila
 
-"Subset convolution" preko kamiona:
+"Subset convolution" preko vozila:
 
 ```
 best_k[S] = min po T ⊆ S ( ruta_k[T] + best_(k-1)[S \ T] )
 ```
 
-`best[S]` je najmanja ukupna kilometraža kojom kamioni izvršavaju točno skup naloga `S`. Za 10 naloga to je 3¹⁰ = 59.049 kombinacija po kamionu. Odabire se `S` s **najviše naloga**, a među njima onaj s **najmanje km**. Pristup radi za bilo koji broj kamiona.
+`best[S]` je najmanja ukupna kilometraža kojom vozila izvršavaju točno skup naloga `S`. Za 10 naloga to je 3¹⁰ = 59.049 kombinacija po vozilu, a za N vozila složenost je O(N · 3ⁿ). Odabire se `S` s **najviše naloga**, a među njima onaj s **najmanje km**.
 
-### 3. Rekonstrukcija i provjera
+### 3.3 Rekonstrukcija i provjera
 
-Iz memo tablice se rekonstruira redoslijed radnji, s opterećenjem, kumulativnim km i vremenom nakon svakog koraka. Zatim **nezavisni validator** (`validatePlan.ts`) ponovno prolazi svaku rutu korak po korak, ne oslanjajući se na solver, i provjerava:
+Iz memo tablice se rekonstruira redoslijed radnji, s opterećenjem, kumulativnim km te vremenom dolaska i odlaska za svaki korak. Zatim **nezavisni validator** (`validatePlan.ts`) ponovno prolazi svaku rutu korak po korak, ne oslanjajući se na solver, i provjerava:
 
 - dionice
 - nosivost i broj strojeva
-- preuzimanje prije isporuke istim kamionom
+- preuzimanje prije isporuke istim vozilom
 - polazak i povratak u bazu
-- dnevni limit
+- dnevni limit, uz utovar/istovar po nalogu i pauzu
+- prikazana vremena
 - da je svaki nalog izvršen točno jednom ili prijavljen kao neizvršiv
 
 Rezultat validatora vidi se u aplikaciji.
 
-### Neizvršivi nalozi
+### 3.4 Neizvršivi nalozi
 
 Nalog ostaje neraspoređen samo ako nijedan valjani raspored ne može izvršiti više naloga. Razlog se određuje ovim redom:
 
-1. stroj je teži od nosivosti svih kamiona
-2. nalog ne stane u radni dan ni kad ga kamion vozi sam
+1. stroj je teži od nosivosti svih vozila
+2. nalog ne stane u radni dan ni kad ga vozilo vozi samo
 3. svi nalozi zajedno ne stanu u radni dan voznog parka
 
-### Složenost i ograničenja
-
-- Za zadane podatke izračun traje **oko 30–50 ms** u pregledniku.
-- Složenost raste kao O(L · 3ⁿ · n), pa je egzaktni solver ograničen na **12 naloga**. Aplikacija za više naloga javlja grešku umjesto da tiho vrati loš rezultat.
-- Za veći broj naloga prirodni sljedeći korak je:
-  - **OR-Tools** (CP-SAT ili Routing s pickup-delivery ograničenjima), ili
-  - **heuristika** (insertion + local search / ALNS), s ovim egzaktnim solverom kao referencom za provjeru kvalitete na malim instancama
-
-## Rezultati za podatke iz zadatka
+## 4. Rezultati za podatke iz zadatka
 
 ### Vožnja + utovar/istovar ≤ 9 h (zadano) — **200,1 km**
 
@@ -106,3 +101,82 @@ Kamion B sam vozi svih 10 naloga: 182,2 km, odnosno 3 h 02 min vožnje. Uz 20 ra
 - Strojevi **M06–M10 (3.900–9.400 kg) stanu samo u kamion B**, pa kamion A može voziti samo N01–N05.
 - **Uz M10 (9.400 kg) ne može ići nijedan drugi stroj**, jer je i s najlakšim M01 ukupno 10.200 kg.
 - Kamion B mora odraditi najmanje 5 naloga (N06–N10), što je već 3 h 20 min samog utovara i istovara.
+
+## 5. Dodatne mogućnosti (faza 2)
+
+### 5.1 Obavezna pauza
+
+- Prekidač je u postavkama, a trajanje je po defaultu 30 min. Pauza je **po defaultu isključena**, pa podaci iz zadatka i dalje daju 200,1 km.
+- Pauza se dodaje **svakom vozilu koje ima barem jedan nalog**.
+- U načinu *vožnja + utovar/istovar* pauza ulazi u limit. U načinu *samo vožnja* ne ulazi, pa taj način i s pauzom daje 182,2 km.
+- Za zadani podskup naloga pauza je konstanta, pa DP ostaje egzaktan.
+- U planu je pauza zaseban korak. Smještena je nakon prve radnje kod koje proteklo vrijeme dosegne polovicu radnog vremena rute, a na kilometražu ne utječe.
+
+**Rezultat s pauzom od 30 min: 217,0 km.** Kamion A vozi N01 i N04 (41,7 km), a kamion B ostalih 8 naloga (175,3 km, 8 h 45 min). Isti rezultat daje i `tools/reference_check.py`.
+
+### 5.2 Vrijeme utovara i istovara po nalogu
+
+Svaki nalog može imati vlastito vrijeme utovara i istovara (`pickupMinutes`, `deliveryMinutes`). Ako vrijednost nije zadana, vrijedi globalnih 20 min. Vrijeme podskupa je zbroj minuta njegovih naloga, a to je i dalje konstanta za podskup, pa najkraća ruta ostaje najbrža i DP ostaje egzaktan.
+
+Primjer: ako utovar N09 traje 60 min umjesto 20, optimum se mijenja na 217,0 km (A: N01 + N04). Rezultat je provjeren Python referencom.
+
+### 5.3 Više vozila i odabir solvera
+
+Subset convolution radi za N vozila. Pri tome:
+
+- DP koristi samo lokacije koje nalozi stvarno koriste (najviše 2n + 1)
+- memo tablica je `Float32` i oslobađa se nakon izračuna, a izbori ostaju u `Int8` polju
+
+Tako 12 naloga i 4 vozila stanu u memoriju preglednika i rješavaju se za oko 0,4 s.
+
+Postavka **Solver** ima tri opcije:
+
+| Opcija | Ponašanje |
+|---|---|
+| **Automatski** (default) | ≤ 12 naloga: egzaktni solver, > 12 naloga: heuristika |
+| Egzaktni | uvijek egzaktni solver; za > 12 naloga javlja grešku umjesto da dugo računa |
+| Heuristika | uvijek heuristika |
+
+Rezultat uvijek prikazuje koji je solver korišten.
+
+### 5.4 Heuristika (`src/solver/heuristic.ts`)
+
+1. **Konstrukcija umetanjem.** Par preuzimanje/isporuka umeće se na mjesto gdje dodaje najmanje km. Provjeravaju se nosivost, broj strojeva, redoslijed i dnevni limit (uključujući minute po nalogu i pauzu). Pokreće se 6 početaka: regret-2, "najdulji nalozi prvi" i 4 nasumična redoslijeda s fiksnim seedom.
+2. **Lokalna pretraga** do lokalnog optimuma, s ovim potezima:
+   - umetanje neraspoređenih naloga
+   - *ejection*: premještanje jednog naloga kako bi se oslobodilo mjesto za neraspoređeni
+   - *relocate*: nalog se vadi i umeće na najbolje mjesto, u istom ili drugom vozilu
+   - *swap*: zamjena naloga između dvaju vozila
+3. **Ruin & recreate** do 1.500 iteracija ili 1,5 s:
+   - uklanja se 15–40 % naloga, srodnih ili nasumičnih
+   - nalozi se vraćaju regret-2 umetanjem
+   - rezultat se dorađuje lokalnom pretragom
+   - prihvaćanje je kao kod *simulated annealinga*; nikad se ne prihvaća rješenje s manje naloga
+
+Cilj je isti kao kod egzaktnog solvera: najviše naloga, zatim najmanje km. Seed je fiksan, pa je rezultat ponovljiv.
+
+**Izmjerena kvaliteta** (egzaktni solver kao referenca):
+
+| Skup | Rezultat |
+|---|---|
+| 40 nasumičnih instanci s 9 naloga | svugdje jednako izvršenih naloga; 38/40 optimalno; prosječno +0,28 %, najgore +9,7 % km |
+| Podaci iz zadatka (limit 9 h) | 200,1 km, optimalno |
+| Podaci iz zadatka + pauza | 217,0 km, optimalno |
+| Podaci iz zadatka bez limita | 183,6 km (optimum 182,2; +0,8 %) |
+| 50 naloga, 5 vozila | valjan plan za oko 1,5 s |
+
+Heuristika **nema jamstvo optimuma**, i to aplikacija jasno navodi. Zato *Automatski* način za ≤ 12 naloga uvijek bira egzaktni solver. Za veće probleme sljedeći korak bio bi OR-Tools (Routing s pickup-delivery ograničenjima) ili CP-SAT na backendu, s ovim egzaktnim solverom kao referencom na malim instancama.
+
+### 5.5 Stvarna karta i udaljenosti
+
+Skup podataka je u jednom od dva načina, bez miješanja:
+
+- **koordinatni sustav** iz zadatka (km), s euklidskom udaljenosti
+- **stvarna karta** (geografska širina i dužina), s udaljenosti **haversine × faktor ceste**:
+  - R = 6371,0088 km
+  - faktor je po defaultu 1,3 i može se podesiti
+  - zaokružuje se na 0,1 km po dionici, kao i u XY načinu
+
+Faktor ceste je gruba, ali transparentna aproksimacija stvarne cestovne udaljenosti. Ne ovisi o vanjskom servisu, pa radi i offline i ponovljiva je. Prirodni sljedeći korak su stvarne cestovne udaljenosti iz OSRM-a ili Google Distance Matrix API-ja (matrica udaljenosti umjesto formule). Solver se pri tome ne mijenja, jer radi nad matricom udaljenosti.
+
+Lokacije se unose klikom na kartu, pretragom adrese (Nominatim, najviše 1 upit u sekundi), povlačenjem markera ili ručnim upisom koordinata. Ručni unos uvijek radi, i kad javni servisi nisu dostupni.

@@ -1,19 +1,20 @@
 # UP RENT – Smart Logistics Planner
 
-Prototip web-aplikacije koja raspoređuje transportne naloge radnih strojeva na kamione Up Renta i za svaki kamion određuje optimalan redoslijed preuzimanja i isporuka, uz najmanju ukupnu kilometražu.
+Prototip web-aplikacije koja raspoređuje transportne naloge radnih strojeva na vozila Up Renta i za svako vozilo određuje optimalan redoslijed preuzimanja i isporuka, uz najmanju ukupnu kilometražu.
 
 **Live demo:** https://uprenttest.vercel.app/
 
 ![Rezultat optimizacije](docs/screenshots/02-rezultat.png)
 
-## Rezultat za zadane podatke
+## Rezultat za podatke iz zadatka
 
 | Tumačenje limita od 9 h | Raspored | Ukupno |
 |---|---|---|
 | **Vožnja + utovar/istovar** (zadana pretpostavka) | Kamion A: N03 (37,2 km, 1 h 17 min) · Kamion B: ostalih 9 naloga (162,9 km, 8 h 43 min) | **200,1 km** |
 | Samo vožnja / bez limita | Kamion B: svih 10 naloga (182,2 km, ali 9 h 42 min ukupnog rada) | 182,2 km |
+| Vožnja + utovar/istovar + obavezna pauza od 30 min (dodatna opcija, po defaultu isključena) | Kamion A: N01, N04 (41,7 km) · Kamion B: ostalih 8 naloga (175,3 km, 8 h 45 min) | 217,0 km |
 
-Rješenje je **dokazivo optimalno**: solver je egzaktan (bez heuristike). Rezultat je nezavisno potvrđen Python implementacijom i usporedbom s brute force pretragom. Detalji su u [docs/OPTIMIZACIJA.md](docs/OPTIMIZACIJA.md).
+Za podatke iz zadatka rješenje je **dokazivo optimalno**: koristi se egzaktni solver. Rezultati su nezavisno potvrđeni Python implementacijom i usporedbom s brute force pretragom. Detalji su u [docs/OPTIMIZACIJA.md](docs/OPTIMIZACIJA.md).
 
 ## Pokretanje
 
@@ -32,58 +33,108 @@ Nezavisna provjera rezultata u Pythonu (bez ovisnosti):
 python3 tools/reference_check.py
 ```
 
+Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 kamiona, 10 lokacija i 10 naloga iz zadatka, a zatim **„Optimiziraj raspored”** računa plan.
+
 ## Funkcionalnosti
 
-- **Prikaz i uređivanje ulaznih podataka:** vozni park, lokacije, strojevi i nalozi. Nalozi se mogu dodavati i uklanjati, a jedan klik vraća podatke iz zadatka.
-- **Automatska raspodjela naloga** na kamione i **redoslijed obilaska** za svaki kamion.
+### Traženo zadatkom
+
+- **Prikaz i uređivanje ulaznih podataka:** vozni park, lokacije, strojevi i transportni nalozi.
+- **Automatska raspodjela naloga** na vozila i **redoslijed obilaska** za svako vozilo.
 - **Poštivanje svih ograničenja:**
   - nosivost (kg) i broj strojeva u svakom trenutku
-  - preuzimanje prije isporuke, i to istim kamionom
+  - preuzimanje prije isporuke, i to istim vozilom
   - polazak i povratak u bazu
-  - dnevni limit od 9 h
-- **Prekidač za tumačenje limita od 9 h:** vožnja + utovar/istovar, samo vožnja, ili bez limita.
-- **Rezultat po kamionu:**
-  - redoslijed lokacija i radnje (preuzimanje ili isporuka)
+  - dnevni limit od 9 h, uz prekidač za tumačenje: *vožnja + utovar/istovar* / *samo vožnja* / *bez limita*
+- **Rezultat po vozilu:**
+  - redoslijed lokacija i radnje (preuzimanje / isporuka)
   - opterećenje nakon svake radnje (kg i broj strojeva)
-  - dionica i kumulativni km, kumulativno vrijeme
+  - dionica i kumulativni km, vrijeme dolaska i odlaska
   - ukupna kilometraža i broj izvršenih naloga
-- **Ukupna kilometraža** oba kamiona i **karta ruta** (SVG).
-- **Jasna upozorenja** za naloge koje nije moguće izvršiti, s razlogom (npr. stroj teži od nosivosti svih kamiona ili nalog ne stane u radni dan).
-- **Nezavisni validator** koji nakon svake optimizacije ponovno provjerava sva pravila i prikazuje "Provjera ograničenja: Sve OK".
+- **Ukupna kilometraža** cijelog voznog parka i **karta ruta**.
+- **Jasna upozorenja** za naloge koje nije moguće izvršiti, s razlogom. Na primjer: stroj je teži od nosivosti svih vozila ili nalog ne stane u radni dan.
+- **Nezavisni validator:** nakon svake optimizacije ponovno provjerava sva pravila i prikazuje „Provjera ograničenja: Sve OK”.
+
+### Dodatno (iznad zadatka)
+
+- **Proizvoljan broj vozila, lokacija i naloga**, s dodavanjem i brisanjem (×) te gumbom „Obriši sve”. Pri brisanju se čuva referencijalni integritet: lokacija koju koriste nalozi briše se tek nakon potvrde, a baza se ne može obrisati dok postoje nalozi.
+- **Vrijeme utovara/istovara po nalogu** (veći teret može trajati duže). Ako polje ostane prazno, vrijedi zadanih 20 min.
+- **Obavezna pauza (gablec)** kao opcija u postavkama: prekidač i trajanje, po defaultu isključena.
+- **Solver: Automatski / Egzaktni / Heuristika.** Do 12 naloga radi egzaktni solver, a iznad toga se automatski uključuje heuristika (testirano do 50 naloga i 5 vozila). UI uvijek prikazuje koji je solver korišten.
+- **Linija vremena** po vozilu: vožnja, utovar, istovar, pauza i dnevni limit na zajedničkoj osi. Klik na točku označava korak u tablici.
+- **Prava karta** (Leaflet + OpenStreetMap) i **unos stvarnih lokacija:**
+  - klik na kartu
+  - pretraga adrese (Nominatim)
+  - povlačenje markera
+  - ručni unos koordinata
+
+  Udaljenost je zračna linija × faktor ceste (default 1,3). Postoji i primjer s mjestima u okolici Zagreba.
+- **Filter vozila** za liniju vremena, kartu i detalje: jedno, više ili sva vozila.
+- **Raspored ekrana:** ulazni podaci i ograničenja su u lijevom izborniku iza hamburgera, a rezultati desno. Na mobitelu se izbornik otvara preko sadržaja.
+- **Izgled u stilu uprent.hr** (logo, boje, header), uz napomenu da je riječ o prototipu, a ne službenom proizvodu.
+
+## Screenshotovi
+
+| | |
+|---|---|
+| [Početni (prazni) ekran](docs/screenshots/00-pocetni-ekran.png) | [Cijela stranica s rezultatom](docs/screenshots/01-cijela-aplikacija.png) |
+| [Upozorenje: pretežak stroj](docs/screenshots/03-upozorenje-pretezak-stroj.png) | [Pauza i linija vremena (217,0 km)](docs/screenshots/04-pauza-i-linija-vremena.png) |
+| [Utovar po nalogu (N09: 60 min)](docs/screenshots/05-nalozi-utovar-po-nalogu.png) | [Mobitel: rezultat](docs/screenshots/06-mobitel-rezultat.png) · [izbornik](docs/screenshots/07-mobitel-izbornik.png) |
 
 ## Struktura
 
 ```
 src/
-  solver/              # čista TypeScript logika, bez Reacta
-    solver.ts          # egzaktni solver (DP + raspodjela)
-    validatePlan.ts    # nezavisna provjera poslovnih pravila
-    validateInput.ts   # provjera ulaznih podataka
-    distance.ts        # euklidska udaljenost, zaokružena na 0,1 km
+  solver/                    # čista TypeScript logika, bez Reacta
+    solver.ts                # egzaktni solver (DP + raspodjela) i odabir solvera
+    heuristic.ts             # heuristika za > 12 naloga
+    prepare.ts               # zajednička priprema podataka i izgradnja plana s vremenima
+    time.ts                  # radno vrijeme rute (vožnja, utovar/istovar, pauza)
+    validatePlan.ts          # nezavisna provjera poslovnih pravila
+    validateInput.ts         # provjera ulaznih podataka
+    distance.ts              # euklidska / haversine udaljenost, zaokružena na 0,1 km
     types.ts
-    solver.test.ts     # testovi poslovnih ograničenja i optimalnosti
-  data/defaultData.ts  # podaci iz zadatka
-  components/          # React UI
-tools/reference_check.py   # nezavisna Python provjera
-docs/                      # dokumentacija za predaju
+    *.test.ts                # testovi
+  data/
+    defaultData.ts           # podaci iz zadatka, prazno stanje, primjer za kartu
+    edit.ts                  # dodavanje/brisanje uz referencijalni integritet
+    geocode.ts               # pretraga adresa (Nominatim, najviše 1 upit/s)
+  components/                # React UI (drawer, linija vremena, karte, rezultati)
+tools/reference_check.py     # nezavisna Python provjera
+docs/                        # dokumentacija za predaju
 ```
 
 ## Testovi
 
-`npm test` pokreće 41 test case:
+`npm test` pokreće **140 test caseova**.
+
+### Poslovna ograničenja iz zadatka (`src/solver/solver.test.ts`)
 
 | # | Poslovno pravilo | Što se provjerava |
 |---|---|---|
-| 1 | Nosivost i broj strojeva | U nijednom koraku nijedan kamion ne premašuje kg ni broj strojeva (sva 3 načina limita) |
-| 2 | Preuzimanje prije isporuke, isti kamion | Svaki stroj je preuzet prije isporuke, isti kamion radi oboje, a svaki nalog je izvršen točno jednom ili prijavljen kao neizvršiv |
-| 3 | Baza | Svaka ruta kreće iz L0 i vraća se u L0, prazna |
+| 1 | Nosivost i broj strojeva | U nijednom koraku nijedno vozilo ne premašuje kg ni broj strojeva (sva 3 načina limita) |
+| 2 | Preuzimanje prije isporuke, isto vozilo | Svaki stroj je preuzet prije isporuke, isto vozilo radi oboje, a svaki nalog je izvršen točno jednom ili prijavljen kao neizvršiv |
+| 3 | Baza | Svaka ruta kreće iz baze i vraća se u nju, prazna |
 | 4 | Dnevni limit od 9 h | Zadani podaci daju 200,1 km i oba kamiona su unutar 9 h. Bez limita je 182,2 km. Uz limit od 2 h nalozi se prijavljuju kao neizvršivi, s razlogom |
 | 5 | Neizvršivi nalozi | Stroj od 12.000 kg prijavljen je upozorenjem, a ostali nalozi su svejedno optimizirani. Neispravan unos daje jasnu grešku |
 | 6 | Optimalnost | Na 25 nasumičnih instanci solver daje isti rezultat kao naivni brute force |
 | 7 | Udaljenost | Euklidska, zaokružena na 0,1 km po dionici |
+
+### Dodatne funkcionalnosti
+
+| Datoteka | Što se provjerava |
+|---|---|
+| `src/solver/time-and-heuristic.test.ts` | Pauza (217,0 km), utovar/istovar po nalogu, vremena dolaska i odlaska, 3+ vozila (egzaktni = brute force), automatski odabir solvera, kvaliteta heuristike u odnosu na egzaktni solver (30 instanci), 50 naloga i 5 vozila |
+| `src/solver/model.test.ts` | Model podataka, haversine udaljenost, prazan ulaz, validacija novih polja |
+| `src/data/edit.test.ts` | Dodavanje i brisanje uz referencijalni integritet (uključujući 300 nasumičnih koraka), „Obriši sve”, način stvarne karte |
+| `src/data/geocode.test.ts` | Pretraga adresa: najviše 1 upit u sekundi, obrada rezultata i grešaka |
 
 ## Dokumentacija za predaju
 
 - [Opis optimizacijske logike i pretpostavki](docs/OPTIMIZACIJA.md)
 - [Osvrt na korištene AI alate i način provjere](docs/AI-OSVRT.md)
 - [Utrošeno vrijeme](docs/VRIJEME.md)
+
+## Napomena
+
+Ovo je prototip izrađen u sklopu selekcijskog zadatka i nije službeni proizvod Up Rent d.o.o. Karta: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors. Pretraga adresa: [Nominatim](https://nominatim.org/), uz poštivanje [pravila korištenja](https://operations.osmfoundation.org/policies/nominatim/).

@@ -6,7 +6,7 @@
 |---|---|
 | **Claude (Anthropic, model Opus)** u agentnom načinu rada, s pristupom terminalu, gitu i pregledniku | Analiza zadatka iz maila, odabir pristupa, Python referentna implementacija, TypeScript solver, validator, testovi, React UI, dokumentacija |
 | **Playwright + headless Chrome** (pokreće AI) | Screenshotovi i vizualna provjera UI-ja |
-| **Claude in Chrome** | Očitavanje boja i fonta sa stranice uprent.hr, kako bi UI bio u Up Rent stilu |
+| **Claude in Chrome** | Očitavanje boja, fonta, izgleda headera i logotipa sa stranice uprent.hr, kako bi UI bio u Up Rent stilu |
 
 ## Moja uloga
 
@@ -18,6 +18,12 @@
 
   Prijedloge sam procijenio i prihvatio, jer tako uobičajeno pristupam projektima: prvo jasno definiram pretpostavke, zatim biram rješenje čiji se rezultat može provjeriti, a jednostavnu arhitekturu stavljam ispred složene.
 - Usmjeravao sam rad, provjeravao međurezultate i odlučivao o predaji, deployu i doradama.
+- Za drugu fazu sam nakon pregleda aplikacije definirao 10 zahtjeva za dorade i donio odluke o otvorenim pitanjima:
+  - pauza kao opcija, po defaultu isključena
+  - raspored ekrana
+  - automatski odabir solvera
+  - karte i geokodiranje
+  - logo uz napomenu da je riječ o prototipu
 
 ## Kako su rezultati AI-ja provjereni
 
@@ -26,13 +32,38 @@ AI-generiranom kodu nisam vjerovao "na riječ". Svaki ključni rezultat provjere
 1. **Dvije neovisne implementacije.** Prije pisanja aplikacije optimum je izračunat zasebnom Python skriptom (`tools/reference_check.py`), drukčije strukturiranom od TypeScript solvera. Obje daju **iste kilometre i iste rute**: 200,1 km i 182,2 km.
 2. **Brute force usporedba.** Test na 25 nasumičnih instanci uspoređuje solver s naivnom pretragom svih raspodjela i svih redoslijeda radnji. Brute force je dovoljno jednostavan da mu se može vjerovati čitanjem.
 3. **Nezavisni validator.** `validatePlan` ne koristi solver, nego ponovno prolazi svaku rutu i provjerava sva poslovna pravila. Pokreće se u testovima i u aplikaciji nakon svake optimizacije.
-4. **Testovi poslovnih pravila** (41 test case) za nosivost, broj strojeva, preuzimanje prije isporuke istim kamionom, bazu, dnevni limit i neizvršive naloge.
+4. **Testovi poslovnih pravila** (u prvoj fazi 41 test case) za nosivost, broj strojeva, preuzimanje prije isporuke istim kamionom, bazu, dnevni limit i neizvršive naloge.
 5. **Ručna provjera:**
    - dionica L0–L1 = √(3² + 8²) = √73 = 8,544, zaokruženo **8,5 km** ✔
    - kamion B s limitom: 162,9 km / 60 = 2,715 h, plus 18 radnji × 20 min = 6 h, ukupno **8,71 h ≤ 9 h** ✔
    - bez limita: 182,2 km / 60 = 3,04 h, plus 20 × 20 min = 6,67 h, ukupno **9,70 h > 9 h**. To je razlog zašto 182,2 km nije prihvatljiv uz realno tumačenje limita ✔
    - M10 (9.400 kg) + najlakši M01 (800 kg) = 10.200 kg > 10.000 kg, pa M10 uvijek putuje sam ✔
 6. **Vizualna provjera UI-ja.** Screenshotovi su pronašli stvarnu grešku: oznaka "Podaci su promijenjeni" pojavljivala se odmah pri prvom učitavanju, zbog dvije različite kopije početnih podataka. Greška je ispravljena, a scenarij s preteškim strojem provjeren je klikom u pregledniku.
+
+## Druga faza (dorade)
+
+AI je implementirao dorade prema mojim zahtjevima i odlukama. Svaka nova funkcionalnost provjerena je na isti način kao i prva faza:
+
+1. **Nove brojke prvo su izračunate referentnom Python logikom**, a tek onda implementirane:
+   - pauza od 30 min daje **217,0 km**; scenarij je dodan u `tools/reference_check.py`
+   - utovar N09 od 60 min daje 217,0 km
+   - zadatak bez lokacije L3 daje 154,9 km
+2. **Egzaktni solver za 3 vozila** uspoređen je s brute force pretragom na 12 nasumičnih instanci.
+3. **Heuristika je mjerena prema egzaktnom solveru.** Mjerenje je otkrilo da je prva verzija preslaba: na 60 instanci najgore je bila 70 % iznad optimuma, a u 2 slučaja izvršila je manje naloga. Zato su dodani ruin & recreate i ejection potez. Nakon toga, na 40 instanci:
+   - svugdje izvrši jednako naloga
+   - u 38 slučajeva je optimalna, prosječno 0,28 % iznad optimuma
+
+   Dodatni potez koji nije donio poboljšanje uklonjen je. Ograničenja heuristike navedena su u aplikaciji i dokumentaciji.
+4. **Haversine udaljenost** provjerena je nezavisnim izračunom: 1° na ekvatoru = 111,195 km; Zagreb–Split 259,1 km, a uz faktor 1,3 336,8 km.
+5. **Referencijalni integritet** kod brisanja provjerava test sa 300 nasumičnih koraka uređivanja.
+6. **Validator je proširen.** Sada provjerava i vrijeme utovara/istovara po nalogu, pauzu i prikazana vremena. Testovi potvrđuju da otkriva izmijenjene (krivotvorene) planove.
+7. **Vizualna provjera (headless).** Otkrila je i ispravljene su ove greške:
+   - tablica lokacija prelijevala se preko susjedne kartice
+   - oznake na liniji vremena preklapale su se
+   - glavna KPI brojka lomila se u dva retka
+8. **Logo** je preuzet s uprent.hr preko preglednika, a ispravnost datoteke potvrđena je CRC provjerom svih PNG blokova.
+
+Ukupno je **140 testova**, a svi prolaze.
 
 ## Zaključak
 
