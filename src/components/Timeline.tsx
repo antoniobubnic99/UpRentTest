@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { truckColor } from '../colors'
 import { fmtHours, fmtKm } from '../format'
 import type { Plan, RouteStep, Settings } from '../solver'
@@ -33,17 +34,35 @@ export function Timeline({ plan, settings, visible, selected, onSelect }: Props)
   const limitOn = settings.timeLimitMode !== 'none'
   const span = Math.max(1, Math.ceil(Math.max(longest, limitOn ? settings.maxHoursPerDay : 0)))
   const pct = (h: number) => `${(h / span) * 100}%`
-  const ticks = Array.from({ length: span + 1 }, (_, i) => i)
-  // Labels only where there is room for them (fractions of the axis); details are in the tooltip.
-  const LEG_LABEL_MIN = 0.075
-  const POINT_LABEL_GAP = 0.03
+  // Labels only where there is room for them, measured in pixels of the actual track
+  // (narrow on phones, wide on desktop); details are always in the tooltip.
+  const hasRows = trucks.length > 0
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [trackPx, setTrackPx] = useState(700)
+  useEffect(() => {
+    const el = gridRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      const track = el.querySelector('.tl-row .tl-track') as HTMLElement | null
+      if (track) setTrackPx(Math.max(1, track.clientWidth))
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [hasRows])
+  const pxPerHour = trackPx / span
+  const tickStep = pxPerHour < 34 ? 2 : 1
+  const ticks = Array.from({ length: span + 1 }, (_, i) => i).filter(
+    (t) => t % tickStep === 0 || (t === span && (span % tickStep) * pxPerHour >= 34),
+  )
+  const LEG_LABEL_MIN = 78 / trackPx
+  const POINT_LABEL_GAP = 24 / trackPx
 
   return (
     <div className="card timeline">
       <h3>Linija vremena</h3>
       {trucks.length === 0 && <p className="hint">Nijedno vozilo nije odabrano.</p>}
       {trucks.length > 0 && (
-        <div className="tl-grid">
+        <div className="tl-grid" ref={gridRef}>
           <div className="tl-axis-row">
             <div className="tl-label" />
             <div className="tl-track tl-axis">
@@ -156,7 +175,7 @@ export function Timeline({ plan, settings, visible, selected, onSelect }: Props)
             <span className="tl-key tl-limit-key" /> Limit {settings.maxHoursPerDay} h
           </span>
         )}
-        <span className="muted">Klik na točku označava korak u tablici; prijeđi mišem za detalje.</span>
+        <span className="muted">Klik na točku označava korak u tablici; prijeđi mišem (ili dodirni) za detalje.</span>
       </div>
     </div>
   )

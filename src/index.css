@@ -1306,3 +1306,311 @@ p.empty-row {
 .kpis.small {
   grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
 }
+
+/* =====================================================================
+   Mobile (phones, ≤ 640 px)
+   ===================================================================== */
+.app {
+  min-height: 100dvh;
+}
+@media (max-width: 900px) {
+  .drawer {
+    height: calc(100dvh - 77px);
+  }
+}
+@media (max-width: 640px) {
+  /* header */
+  .topbar-inner {
+    min-height: 60px;
+    padding: 8px 12px;
+    gap: 12px;
+  }
+  .hamburger {
+    width: 40px;
+    height: 40px;
+  }
+  .drawer {
+    top: 65px;
+    height: calc(100dvh - 65px);
+    width: 100vw;
+  }
+  .backdrop {
+    inset: 65px 0 0 0;
+  }
+
+  /* iOS zooms into inputs smaller than 16 px; bigger tap targets */
+  .cell-input,
+  select.cell-input,
+  .geo-search input {
+    font-size: 16px;
+  }
+  .btn-icon {
+    width: 34px;
+    height: 34px;
+  }
+  .drawer-top {
+    padding: 12px 12px 0;
+  }
+  .drawer-body {
+    padding: 12px;
+  }
+  .drawer-bottom {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  }
+  .tabs button {
+    font-size: 12px;
+    letter-spacing: 0.02em;
+    padding: 10px 2px 8px;
+    gap: 4px;
+  }
+  .tabs .count {
+    padding: 1px 5px;
+  }
+  .drawer .segmented,
+  .mode-switch .segmented {
+    display: flex;
+    width: 100%;
+  }
+  .drawer .segmented button {
+    flex: 1 1 0;
+    padding: 9px 6px;
+    font-size: 13px;
+  }
+  .edit-table .cell-input.num {
+    width: 56px;
+  }
+  .edit-table .cell-input.num.wide {
+    width: 78px;
+  }
+  .edit-table .cell-input.num.coord {
+    width: 84px;
+  }
+  .order-head select {
+    font-size: 15px;
+  }
+
+  /* results */
+  .results {
+    padding: 14px 10px 28px;
+  }
+  .results h2 {
+    font-size: 18px;
+  }
+  .card {
+    padding: 14px 12px;
+  }
+  .kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .kpis > div {
+    padding: 10px;
+  }
+  .kpis > div span {
+    font-size: 10px;
+  }
+  .kpis > div strong {
+    font-size: 17px;
+    white-space: normal;
+  }
+  .kpis .kpi-main {
+    grid-column: 1 / -1;
+  }
+  .kpis .kpi-main strong {
+    font-size: 30px;
+  }
+  .kpis.small {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .kpis.small > div strong {
+    font-size: 15px;
+  }
+  .truck-head h3 {
+    font-size: 16px;
+  }
+
+  /* timeline: name above the track, track uses the full width */
+  .tl-grid {
+    overflow: visible;
+  }
+  .tl-axis-row,
+  .tl-row {
+    grid-template-columns: 1fr;
+  }
+  .tl-axis-row .tl-label {
+    display: none;
+  }
+  .tl-row .tl-label {
+    padding: 6px 0 0;
+  }
+  .tl-label small {
+    display: inline;
+    margin-left: 6px;
+  }
+  .tl-track {
+    margin-right: 12px;
+    margin-left: 6px;
+  }
+  .tl-point {
+    width: 13px;
+    height: 13px;
+    margin-left: -6.5px;
+  }
+  .tl-legend {
+    gap: 6px 14px;
+    font-size: 12px;
+  }
+
+  /* maps */
+  .geo-map {
+    height: 340px;
+  }
+  .geo-editor-map {
+    height: 240px;
+  }
+  .legend {
+    font-size: 12px;
+    gap: 6px 14px;
+  }
+
+  /* step table as compact two-line cards */
+  .table-wrap {
+    overflow: visible;
+  }
+  table.steps thead {
+    display: none;
+  }
+  table.steps,
+  table.steps tbody {
+    display: block;
+  }
+  table.steps tr {
+    display: grid;
+    grid-template-columns: 24px 40px auto minmax(0, 1fr);
+    grid-template-areas:
+      'seq loc act ord'
+      'seq leg cum time'
+      'seq load load load';
+    column-gap: 8px;
+    row-gap: 2px;
+    align-items: center;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  table.steps td {
+    padding: 0;
+    border: none;
+    white-space: nowrap;
+    background: transparent !important;
+    font-size: 13px;
+    text-align: left;
+  }
+  .steps tr.act-start,
+  .steps tr.act-return,
+  .steps tr.act-break {
+    background: var(--surface-2);
+  }
+  .steps tr.selected {
+    background: var(--yellow) !important;
+  }
+  .steps .c-seq {
+    grid-area: seq;
+    align-self: start;
+    text-align: right;
+  }
+  .steps .c-loc {
+    grid-area: loc;
+  }
+  .steps .c-act {
+    grid-area: act;
+  }
+  .steps .c-ord {
+    grid-area: ord;
+    text-align: right;
+    color: var(--ink-2);
+  }
+  .steps .c-leg {
+    grid-area: leg;
+  }
+  .steps .c-cum {
+    grid-area: cum;
+  }
+  .steps .c-time {
+    grid-area: time;
+    text-align: right;
+    color: var(--ink-2);
+  }
+  .steps .c-load {
+    grid-area: load;
+  }
+  .steps .c-leg:not(:empty)::before,
+  .steps .c-cum::before {
+    content: attr(data-label) ' ';
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .steps tr.act-start .c-load,
+  .steps tr.act-return .c-load,
+  .steps tr.act-break .c-load {
+    display: none;
+  }
+  .load-bar {
+    width: 70px;
+  }
+  .badge {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .assign-row {
+    flex-wrap: wrap;
+  }
+  .footer {
+    font-size: 12px;
+    padding: 14px 12px calc(14px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 640px) {
+  .steps tr.act-start .c-cum,
+  .steps tr.act-break .c-cum {
+    visibility: hidden;
+  }
+}
+@media (max-width: 640px) {
+  table.steps tr {
+    grid-template-areas:
+      'seq loc act ord'
+      'seq leg leg cum'
+      'seq load load time';
+  }
+  .steps .c-cum {
+    text-align: right;
+  }
+  .steps .load-bar {
+    display: none;
+  }
+  .steps .load span {
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+}
+@media (max-width: 640px) {
+  table.steps tr.act-start,
+  table.steps tr.act-break {
+    grid-template-areas: 'seq loc act time';
+  }
+  table.steps tr.act-return {
+    grid-template-areas:
+      'seq loc act time'
+      'seq leg leg cum';
+  }
+  .steps tr.act-start .c-leg,
+  .steps tr.act-start .c-cum,
+  .steps tr.act-start .c-ord,
+  .steps tr.act-break .c-leg,
+  .steps tr.act-break .c-cum,
+  .steps tr.act-break .c-ord,
+  .steps tr.act-return .c-ord {
+    display: none;
+  }
+}

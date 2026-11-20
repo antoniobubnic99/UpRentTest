@@ -86,17 +86,21 @@ export function TruckResult({ plan, color, settings, selectedSeq }: Props) {
                     id={`step-${truck.id}-${s.seq}`}
                     className={`act-${s.action}${selectedSeq === s.seq ? ' selected' : ''}`}
                   >
-                    <td className="r muted">{s.seq}</td>
-                    <td>
+                    <td className="r muted c-seq">{s.seq}</td>
+                    <td className="c-loc">
                       <strong>{s.locationId}</strong>
                     </td>
-                    <td>
+                    <td className="c-act">
                       <span className={`badge badge-${s.action}`}>{ACTION_LABEL[s.action]}</span>
                     </td>
-                    <td>{s.orderId ? `${s.orderId} · ${s.machineId}` : ''}</td>
-                    <td className="r">{s.action === 'start' || s.action === 'break' ? '' : fmtKm(s.legKm)}</td>
-                    <td className="r">{fmtKm(s.cumulativeKm)}</td>
-                    <td>
+                    <td className="c-ord">{s.orderId ? `${s.orderId} · ${s.machineId}` : ''}</td>
+                    <td className="r c-leg" data-label="dionica">
+                      {s.action === 'start' || s.action === 'break' ? '' : fmtKm(s.legKm)}
+                    </td>
+                    <td className="r c-cum" data-label="ukupno">
+                      {fmtKm(s.cumulativeKm)}
+                    </td>
+                    <td className="c-load">
                       <div className="load">
                         <div className="load-bar">
                           <div style={{ width: `${pct}%` }} />
@@ -106,7 +110,7 @@ export function TruckResult({ plan, color, settings, selectedSeq }: Props) {
                         </span>
                       </div>
                     </td>
-                    <td className="r">
+                    <td className="r c-time">
                       {s.action === 'start' || s.action === 'return' || s.departureHours === s.arrivalHours
                         ? fmtHours(s.arrivalHours)
                         : `${fmtHours(s.arrivalHours)} – ${fmtHours(s.departureHours)}`}
