@@ -71,6 +71,15 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
   Udaljenost je zračna linija × faktor ceste (default 1,3). Postoji i primjer s mjestima u okolici Zagreba.
 - **Filter vozila** za liniju vremena, kartu i detalje: jedno, više ili sva vozila.
 - **Raspored ekrana:** ulazni podaci i ograničenja su u lijevom izborniku iza hamburgera, a rezultati desno. Na mobitelu se izbornik otvara preko sadržaja.
+- **Usporedba scenarija:** isti podaci u tri tumačenja radnog dana jedan pored drugog: bez limita 182,2 km, limit 9 h 200,1 km, limit uz pauzu 217,0 km. Objašnjenje je generirano iz samih planova: koji nalozi prelaze na koje vozilo, koliko km „košta” ograničenje i zašto najkraći plan nije izvediv. Svaki scenarij se može primijeniti jednim klikom.
+- **Ispis plana za vozača:** jedna A4 stranica po vozilu, s redoslijedom, satnicom (početak u 07:00), lokacijama, radnjama, strojevima, teretom, stupcem za kvačicu i mjestom za potpis. U pregledniku se sprema kao PDF ([primjer](docs/primjer-plan-voznje.pdf)).
+- **Uvoz i izvoz:**
+  - cijeli skup kao JSON
+  - nalozi kao CSV za Excel (`;`, decimalni zarez, UTF-8)
+  - **link za dijeljenje** koji sadrži podatke u samom URL-u (komprimirano, ništa se ne šalje na server)
+
+  Uvoz se provjerava i javlja greške s brojem retka.
+- **Prilagođeno mobitelu:** koraci rute kao kartice, linija vremena preko cijele širine i polja bez zumiranja na iPhoneu.
 - **Izgled u stilu uprent.hr** (logo, boje, header), uz napomenu da je riječ o prototipu, a ne službenom proizvodu.
 
 ## Screenshotovi
@@ -81,6 +90,7 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 | [Upozorenje: pretežak stroj](docs/screenshots/03-upozorenje-pretezak-stroj.png) | [Pauza i linija vremena (217,0 km)](docs/screenshots/04-pauza-i-linija-vremena.png) |
 | [Utovar po nalogu (N09: 60 min)](docs/screenshots/05-nalozi-utovar-po-nalogu.png) | [Mobitel: rezultat](docs/screenshots/06-mobitel-rezultat.png) · [izbornik](docs/screenshots/07-mobitel-izbornik.png) |
 | [Stvarna karta: primjer okolice Zagreba](docs/screenshots/08-stvarna-karta.png) | [Pretraga adrese (Nominatim)](docs/screenshots/09-pretraga-adrese.png) |
+| [Usporedba scenarija](docs/screenshots/10-usporedba-scenarija.png) | [Primjer plana vožnje (PDF)](docs/primjer-plan-voznje.pdf) |
 
 ## Struktura
 
@@ -93,6 +103,7 @@ src/
     time.ts                  # radno vrijeme rute (vožnja, utovar/istovar, pauza)
     validatePlan.ts          # nezavisna provjera poslovnih pravila
     validateInput.ts         # provjera ulaznih podataka
+    scenarios.ts             # usporedba scenarija s objašnjenjima
     distance.ts              # euklidska / haversine udaljenost, zaokružena na 0,1 km
     types.ts
     *.test.ts                # testovi
@@ -100,6 +111,7 @@ src/
     defaultData.ts           # podaci iz zadatka, prazno stanje, primjer za kartu
     edit.ts                  # dodavanje/brisanje uz referencijalni integritet
     geocode.ts               # pretraga adresa (Nominatim, najviše 1 upit/s)
+    io.ts                    # JSON / CSV uvoz i izvoz, link za dijeljenje
   components/                # React UI (drawer, linija vremena, karte, rezultati)
 tools/reference_check.py     # nezavisna Python provjera
 docs/                        # dokumentacija za predaju
@@ -107,7 +119,7 @@ docs/                        # dokumentacija za predaju
 
 ## Testovi
 
-`npm test` pokreće **140 test caseova**.
+`npm test` pokreće **157 test caseova**.
 
 ### Poslovna ograničenja iz zadatka (`src/solver/solver.test.ts`)
 
@@ -129,6 +141,8 @@ docs/                        # dokumentacija za predaju
 | `src/solver/model.test.ts` | Model podataka, haversine udaljenost, prazan ulaz, validacija novih polja |
 | `src/data/edit.test.ts` | Dodavanje i brisanje uz referencijalni integritet (uključujući 300 nasumičnih koraka), „Obriši sve”, način stvarne karte |
 | `src/data/geocode.test.ts` | Pretraga adresa: najviše 1 upit u sekundi, obrada rezultata i grešaka |
+| `src/solver/scenarios.test.ts` | Usporedba scenarija: 182,2 / 200,1 / 217,0 km i generirana objašnjenja (npr. „Kamion B bi radio 9 h 42 min”) |
+| `src/data/io.test.ts` | JSON i CSV u oba smjera, Excel format (BOM, zarez, navodnici), greške s brojem retka, link za dijeljenje |
 
 ## Dokumentacija za predaju
 

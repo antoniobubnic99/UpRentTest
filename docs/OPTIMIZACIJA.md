@@ -180,3 +180,19 @@ Skup podataka je u jednom od dva načina, bez miješanja:
 Faktor ceste je gruba, ali transparentna aproksimacija stvarne cestovne udaljenosti. Ne ovisi o vanjskom servisu, pa radi i offline i ponovljiva je. Prirodni sljedeći korak su stvarne cestovne udaljenosti iz OSRM-a ili Google Distance Matrix API-ja (matrica udaljenosti umjesto formule). Solver se pri tome ne mijenja, jer radi nad matricom udaljenosti.
 
 Lokacije se unose klikom na kartu, pretragom adrese (Nominatim, najviše 1 upit u sekundi), povlačenjem markera ili ručnim upisom koordinata. Ručni unos uvijek radi, i kad javni servisi nisu dostupni.
+
+### 5.6 Usporedba scenarija
+
+`src/solver/scenarios.ts` rješava iste podatke tri puta: bez limita, uz limit radnog dana i uz limit s pauzom. Svaki plan zasebno provjerava validator. Objašnjenja se ne pišu ručno, nego se generiraju iz planova:
+
+- koji su nalozi prešli na koje vozilo
+- razlika u km u odnosu na prethodni scenarij
+- vozilo koje bi bez limita prekoračilo radni dan
+
+Za podatke iz zadatka:
+
+| Scenarij | Km | Razlika | Zašto |
+|---|---|---|---|
+| Bez limita | 182,2 | – | Kamion B vozi svih 10 naloga, ali bi radio 9 h 42 min |
+| Limit 9 h | 200,1 | +17,9 km | N03 prelazi na kamion A |
+| Limit 9 h + pauza 30 min | 217,0 | +16,9 km | N01 i N04 prelaze na kamion A, a N03 se vraća na B |

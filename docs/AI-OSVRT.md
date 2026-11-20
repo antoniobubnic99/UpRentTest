@@ -63,7 +63,15 @@ AI je implementirao dorade prema mojim zahtjevima i odlukama. Svaka nova funkcio
    - glavna KPI brojka lomila se u dva retka
 8. **Logo** je preuzet s uprent.hr preko preglednika, a ispravnost datoteke potvrđena je CRC provjerom svih PNG blokova.
 
-Ukupno je **140 testova**, a svi prolaze.
+Završni detalji (mobilni prikaz, usporedba scenarija, ispis za vozača, uvoz/izvoz) provjereni su na isti način:
+
+- **Usporedba scenarija:** test potvrđuje brojke 182,2 / 200,1 / 217,0 km i sadržaj generiranih objašnjenja.
+- **Uvoz i izvoz:** testovi u oba smjera (JSON, CSV, link) te testovi grešaka s brojem retka.
+- **Headless provjera cijelog toka:** preuzimanje, ponovni uvoz, izmjena CSV-a s 217,0 km kao rezultatom, otvaranje linka u novom prozoru.
+- **Ispis:** pregledan kao generirani PDF.
+- **Mobitel:** provjereno na širinama 360 i 390 px, bez horizontalnog prelijevanja.
+
+Ukupno je **157 testova**, a svi prolaze.
 
 ## Zaključak
 

@@ -24,9 +24,20 @@ Predviđeno trajanje zadatka: **6 h**.
 | 20.11.2026. | 17:39–17:49 | 0 h 10 min | Pauza, utovar/istovar po nalogu, više vozila, heuristika s mjerenjem kvalitete, odabir solvera |
 | 20.11.2026. | 17:50–18:21 | 0 h 31 min | Novi raspored ekrana, linija vremena, prava karta i filter vozila, unos stvarnih lokacija, logo i stil Up Renta |
 | 20.11.2026. | 18:21–18:25 | 0 h 04 min | Dokumentacija, screenshotovi, završna provjera |
-| | | **1 h 36 min** | |
+| 20.11.2026. | 18:28–18:41 | 0 h 13 min | Push, deploy i provjera na live stranici (karta, pretraga adresa), screenshotovi karte |
+| | | **1 h 49 min** | |
 
-**Ukupno (faza 1 + faza 2): ≈ 2 h 13 min**
+## Faza 3: završni detalji
+
+| Datum | Od–do | Trajanje | Aktivnost |
+|---|---|---|---|
+| 20.11.2026. | 18:43–18:46 | 0 h 03 min | Prilagodba za mobitel (kartice koraka, linija vremena, KPI, polja bez zumiranja) |
+| 20.11.2026. | 18:46–18:48 | 0 h 02 min | Usporedba scenarija s objašnjenjima |
+| 20.11.2026. | 18:48–18:50 | 0 h 02 min | Ispis plana za vozača (A4 / PDF) |
+| 20.11.2026. | 18:50–18:53 | 0 h 03 min | Uvoz i izvoz (JSON, CSV), link za dijeljenje, testovi, dokumentacija |
+| | | **0 h 10 min** | |
+
+**Ukupno (faze 1–3): ≈ 2 h 36 min**
 
 ## Napomena
 

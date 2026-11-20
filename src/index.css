@@ -1614,3 +1614,262 @@ p.empty-row {
     display: none;
   }
 }
+
+/* ---------- scenario comparison ---------- */
+.scenario-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.scenario {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+.scenario.current {
+  border: 2px solid var(--black);
+  box-shadow: inset 6px 0 0 var(--yellow);
+}
+.scenario-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.scenario-label {
+  font-weight: 700;
+  font-size: 14px;
+}
+.scenario-km strong {
+  font-size: 26px;
+}
+.scenario-km .delta {
+  margin-left: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  background: var(--black);
+  color: var(--yellow);
+  padding: 2px 7px;
+  border-radius: 10px;
+  vertical-align: middle;
+}
+.scenario-meta {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.scenario-trucks,
+.scenario-why {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+.scenario-trucks li {
+  display: grid;
+  grid-template-columns: 14px auto 1fr;
+  gap: 2px 8px;
+  align-items: center;
+}
+.scenario-trucks .name {
+  font-weight: 700;
+}
+.scenario-trucks small {
+  grid-column: 2 / -1;
+}
+.scenario-why {
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+}
+.scenario-why li {
+  padding-left: 12px;
+  position: relative;
+}
+.scenario-why li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 5px;
+  height: 5px;
+  background: var(--black);
+}
+.scenario .btn-link {
+  justify-self: start;
+}
+
+/* ---------- driver's plan (print) ---------- */
+.btn-outline.small {
+  padding: 4px 10px;
+  font-size: 12px;
+}
+.truck-head .print-btn {
+  margin-left: auto;
+}
+.print-area {
+  display: none;
+}
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 12mm;
+  }
+  :root,
+  html,
+  body {
+    background: #fff !important;
+  }
+  body > #root {
+    display: none !important;
+  }
+  .print-area {
+    display: block;
+    color: #000;
+    font: 11pt Roboto, Arial, sans-serif;
+  }
+  .sheet {
+    break-after: page;
+  }
+  .sheet:last-child {
+    break-after: auto;
+  }
+  .sheet-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    border-bottom: 3px solid #000;
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+  }
+  .sheet-brand {
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    font-size: 10pt;
+  }
+  .sheet h1 {
+    margin: 2px 0;
+    font-size: 20pt;
+  }
+  .sheet-place {
+    display: inline;
+    margin-left: 6px;
+  }
+  .sheet-sub,
+  .sheet-place,
+  .sheet-note,
+  .sheet-foot {
+    font-size: 9pt;
+    color: #333;
+  }
+  .sheet-facts th,
+  .sheet-facts td {
+    text-align: left;
+    padding: 1px 8px;
+    font-size: 10pt;
+    border: none;
+    background: none;
+    text-transform: none;
+    letter-spacing: 0;
+    color: #000;
+  }
+  .sheet-steps {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .sheet-steps th {
+    background: none;
+    color: #000;
+    font-size: 9pt;
+    border-bottom: 2px solid #000;
+    padding: 4px 6px;
+  }
+  .sheet-steps td {
+    border-bottom: 1px solid #999;
+    padding: 3px 6px;
+    font-size: 9.5pt;
+    vertical-align: top;
+  }
+  .sheet-steps tr {
+    break-inside: avoid;
+  }
+  .sheet-steps tr.act-start td,
+  .sheet-steps tr.act-return td,
+  .sheet-steps tr.act-break td {
+    font-style: italic;
+  }
+  .sheet-steps .check {
+    width: 28px;
+    border-left: 1px solid #999;
+  }
+  .sheet-steps .nowrap {
+    white-space: nowrap;
+  }
+  .sheet-sign {
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
+    gap: 24px;
+    margin-top: 28px;
+  }
+  .sheet-sign div {
+    border-top: 1px solid #000;
+    padding-top: 4px;
+    font-size: 9pt;
+  }
+  .sheet-foot {
+    margin-top: 16px;
+  }
+}
+
+.scenario-head .tag {
+  white-space: nowrap;
+}
+
+/* ---------- import / export ---------- */
+.data-io {
+  margin: -4px 0 10px;
+}
+.data-io > .btn-link {
+  font-size: 13px;
+}
+.data-io-panel {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  display: grid;
+  gap: 6px;
+}
+.data-io-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.data-io-label {
+  font-size: 13px;
+  flex: 1;
+  min-width: 140px;
+}
+.io-msg {
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: #fff;
+}
+.io-msg.ok {
+  border-left: 4px solid var(--green);
+}
+.io-msg.error {
+  border-left: 4px solid var(--red);
+  color: var(--red);
+}
+.data-io .hint {
+  font-size: 12px;
+  margin: 0;
+}

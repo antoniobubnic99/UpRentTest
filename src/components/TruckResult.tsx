@@ -6,6 +6,7 @@ interface Props {
   color: string
   settings: Settings
   selectedSeq?: number
+  onPrint?: () => void
 }
 
 const ACTION_LABEL = {
@@ -16,7 +17,7 @@ const ACTION_LABEL = {
   return: 'Povratak',
 } as const
 
-export function TruckResult({ plan, color, settings, selectedSeq }: Props) {
+export function TruckResult({ plan, color, settings, selectedSeq, onPrint }: Props) {
   const { truck } = plan
   const limitOn = settings.timeLimitMode !== 'none'
   const overLimit = limitOn && plan.limitedHours > settings.maxHoursPerDay + 1e-9
@@ -29,6 +30,11 @@ export function TruckResult({ plan, color, settings, selectedSeq }: Props) {
         <span className="muted">
           {fmtKg(truck.capacityKg)} · max {truck.maxItems} stroja
         </span>
+        {onPrint && plan.ordersCompleted > 0 && (
+          <button className="btn-outline small print-btn" onClick={onPrint}>
+            Ispis za vozača
+          </button>
+        )}
       </div>
 
       <div className="kpis small">

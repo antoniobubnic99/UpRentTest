@@ -1,8 +1,11 @@
-import { Suspense, lazy, useMemo, useState } from 'react'
+import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import type { Result } from '../App'
 import { truckColor } from '../colors'
 import { fmtKm } from '../format'
+import type { Settings } from '../solver'
+import { DriverSheets } from './DriverSheets'
 import { RouteMap } from './RouteMap'
+import { ScenarioCompare } from './ScenarioCompare'
 import { Timeline } from './Timeline'
 import { TruckResult } from './TruckResult'
 
@@ -12,9 +15,10 @@ const GeoMap = lazy(() => import('./GeoMap'))
 interface Props {
   result: Extract<Result, { kind: 'ok' }>
   stale: boolean
+  onApplySettings: (settings: Settings) => void
 }
 
-export function Results({ result, stale }: Props) {
+export function Results({ result, stale, onApplySettings }: Props) {
   const { plan, input, violations } = result
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
   const [selected, setSelected] = useState<{ truckId: string; seq: number } | null>(null)
@@ -22,6 +26,8 @@ export function Results({ result, stale }: Props) {
     () => new Set(plan.trucks.map((t) => t.truck.id).filter((id) => !hidden.has(id))),
     [plan, hidden],
   )
+  const [printIds, setPrintIds] = useState<string[] | null>(null)
+  const donePrinting = useCallback(() => setPrintIds(null), [])
   const machineWeight = useMemo(() => new Map(input.machines.map((m) => [m.id, m.weightKg])), [input])
 
   const toggle = (id: string) => {
@@ -120,6 +126,13 @@ export function Results({ result, stale }: Props) {
         <div className="assign-head">
           <h3>Raspodjela naloga</h3>
           <div className="filter" role="group" aria-label="Filter vozila">
+            <button
+              className="btn-outline small"
+              onClick={() => setPrintIds(plan.trucks.filter((t) => t.ordersCompleted > 0).map((t) => t.truck.id))}
+              disabled={plan.ordersCompleted === 0}
+            >
+              Ispis za vozače
+            </button>
             <span className="muted">Prikaži:</span>
             <button className="btn-link" onClick={() => setHidden(new Set())}>
               Sva
@@ -153,6 +166,8 @@ export function Results({ result, stale }: Props) {
         </div>
       </div>
 
+      <ScenarioCompare input={input} onApply={onApplySettings} />
+
       <Timeline plan={plan} settings={input.settings} visible={visible} selected={selected} onSelect={select} />
 
       {input.coordinateMode === 'geo' ? (
@@ -171,9 +186,11 @@ export function Results({ result, stale }: Props) {
             color={truckColor(i)}
             settings={input.settings}
             selectedSeq={selected?.truckId === tp.truck.id ? selected.seq : undefined}
+            onPrint={() => setPrintIds([tp.truck.id])}
           />
         ) : null,
       )}
+      {printIds && <DriverSheets input={input} plan={plan} truckIds={printIds} onDone={donePrinting} />}
     </section>
   )
 }

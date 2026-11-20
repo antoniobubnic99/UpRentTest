@@ -1,10 +1,12 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from 'react'
+import { DataIO } from './components/DataIO'
 import { ConfirmBar, LocationsPanel, OrdersPanel, TrucksPanel } from './components/InputTables'
 import { ModeSwitch } from './components/ModeSwitch'
 import { Results } from './components/Results'
 import { SettingsPanel } from './components/SettingsPanel'
 import { cloneDefaultInput, emptyInput, isEmptyInput } from './data/defaultData'
 import { clearAll } from './data/edit'
+import { ImportError, decodeShare, shareTokenFromHash } from './data/io'
 import { InputError, solve, validatePlan, type Plan, type ProblemInput } from './solver'
 
 // Leaflet is loaded only in the real-map mode.
@@ -38,6 +40,24 @@ export default function App() {
   const [confirmClear, setConfirmClear] = useState(false)
   const empty = isEmptyInput(input)
   const stale = result.kind === 'ok' && result.input !== input
+
+  // Data shared by link (#d=...): load it once on start.
+  const [shareNote, setShareNote] = useState<string | null>(null)
+  useEffect(() => {
+    const token = shareTokenFromHash(window.location.hash)
+    if (!token) return
+    decodeShare(token)
+      .then((shared) => {
+        setInput(shared)
+        setResult(run(shared))
+        setShareNote(
+          `Učitani su podaci iz linka: ${shared.trucks.length} vozila, ${shared.locations.length} lokacija, ${shared.orders.length} naloga.`,
+        )
+      })
+      .catch((e: unknown) =>
+        setShareNote(e instanceof ImportError ? e.problems.join(' ') : 'Podatke iz linka nije moguće učitati.'),
+      )
+  }, [])
 
   useEffect(() => {
     const mq = window.matchMedia(MOBILE)
@@ -113,6 +133,13 @@ export default function App() {
                 Obriši sve
               </button>
             </div>
+            <DataIO
+              input={input}
+              onLoad={(next) => {
+                setInput(next)
+                setResult({ kind: 'none' })
+              }}
+            />
             {confirmClear && (
               <ConfirmBar
                 pending={{
@@ -177,6 +204,14 @@ export default function App() {
         </aside>
 
         <main className="results">
+          {shareNote && (
+            <div className="alert alert-info share-note">
+              {shareNote}{' '}
+              <button className="btn-link" onClick={() => setShareNote(null)}>
+                Zatvori
+              </button>
+            </div>
+          )}
           {empty && result.kind === 'none' && (
             <div className="card empty-state">
               <h3>Još nema podataka za planiranje</h3>
@@ -211,7 +246,17 @@ export default function App() {
             </div>
           )}
 
-          {result.kind === 'ok' && <Results result={result} stale={stale} />}
+          {result.kind === 'ok' && (
+            <Results
+              result={result}
+              stale={stale}
+              onApplySettings={(settings) => {
+                const next = { ...result.input, settings }
+                setInput(next)
+                setResult(run(next))
+              }}
+            />
+          )}
         </main>
       </div>
 
