@@ -80,6 +80,7 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 | [Početni (prazni) ekran](docs/screenshots/00-pocetni-ekran.png) | [Cijela stranica s rezultatom](docs/screenshots/01-cijela-aplikacija.png) |
 | [Upozorenje: pretežak stroj](docs/screenshots/03-upozorenje-pretezak-stroj.png) | [Pauza i linija vremena (217,0 km)](docs/screenshots/04-pauza-i-linija-vremena.png) |
 | [Utovar po nalogu (N09: 60 min)](docs/screenshots/05-nalozi-utovar-po-nalogu.png) | [Mobitel: rezultat](docs/screenshots/06-mobitel-rezultat.png) · [izbornik](docs/screenshots/07-mobitel-izbornik.png) |
+| [Stvarna karta: primjer okolice Zagreba](docs/screenshots/08-stvarna-karta.png) | [Pretraga adrese (Nominatim)](docs/screenshots/09-pretraga-adrese.png) |
 
 ## Struktura
 
