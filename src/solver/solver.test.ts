@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { cloneDefaultInput, defaultSettings } from '../data/defaultData'
 import { legKm } from './distance'
-import { limitedHours, solve } from './solver'
+import { solve } from './solver'
+import { routeTime } from './time'
 import type { Plan, ProblemInput, TimeLimitMode } from './types'
 import { validatePlan } from './validatePlan'
 import { InputError } from './validateInput'
@@ -124,7 +125,7 @@ describe('business rule 4: 9 h daily limit and reference optimum', () => {
     expect(plan.unassigned.length).toBeGreaterThan(0)
     for (const u of plan.unassigned) expect(u.reason.length).toBeGreaterThan(0)
     for (const tp of plan.trucks)
-      expect(limitedHours(tp.totalKm, tp.orderIds.length * 2, input.settings)).toBeLessThanOrEqual(2)
+      expect(tp.limitedHours).toBeLessThanOrEqual(2 + 1e-9)
     expect(validatePlan(input, plan)).toEqual([])
   })
 })
@@ -225,7 +226,7 @@ function bruteForce(input: ProblemInput): [number, number] {
     }
     dfs(input.baseId, 0, 0, 0, 0)
     if (!Number.isFinite(best)) return Infinity
-    return limitedHours(best / 10, idxs.length * 2, input.settings) <= input.settings.maxHoursPerDay + 1e-9
+    return routeTime(best / 10, idxs.length * 40, idxs.length > 0, input.settings).limitedHours <= input.settings.maxHoursPerDay + 1e-9
       ? best
       : Infinity
   }

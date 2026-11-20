@@ -11,13 +11,14 @@ const ACTION_LABEL = {
   start: 'Polazak',
   pickup: 'Preuzimanje',
   delivery: 'Isporuka',
+  break: 'Pauza',
   return: 'Povratak',
 } as const
 
 export function TruckResult({ plan, color, settings }: Props) {
   const { truck } = plan
   const limitOn = settings.timeLimitMode !== 'none'
-  const overLimit = plan.totalHours > settings.maxHoursPerDay
+  const overLimit = limitOn && plan.limitedHours > settings.maxHoursPerDay + 1e-9
 
   return (
     <div className="card truck">
@@ -46,6 +47,12 @@ export function TruckResult({ plan, color, settings }: Props) {
           <span>Utovar / istovar</span>
           <strong>{fmtHours(plan.handlingHours)}</strong>
         </div>
+        {plan.breakHours > 0 && (
+          <div>
+            <span>Pauza</span>
+            <strong>{fmtHours(plan.breakHours)}</strong>
+          </div>
+        )}
         <div className={overLimit ? 'warn-text' : ''}>
           <span>Ukupno radno vrijeme</span>
           <strong>{fmtHours(plan.totalHours)}</strong>
@@ -53,7 +60,7 @@ export function TruckResult({ plan, color, settings }: Props) {
       </div>
 
       {plan.ordersCompleted === 0 ? (
-        <p className="hint">Kamion ne dobiva nijedan nalog, jer optimalni raspored ne treba ovaj kamion.</p>
+        <p className="hint">Kamion ne dobiva nijedan nalog: raspored ne treba ovo vozilo.</p>
       ) : (
         <div className="table-wrap">
           <table className="steps">
@@ -66,7 +73,7 @@ export function TruckResult({ plan, color, settings }: Props) {
                 <th className="r">Dionica</th>
                 <th className="r">Ukupno</th>
                 <th>Opterećenje nakon radnje</th>
-                <th className="r">Vrijeme</th>
+                <th className="r" title="Dolazak – odlazak (od početka radnog dana)">Dolazak – odlazak</th>
               </tr>
             </thead>
             <tbody>
@@ -82,7 +89,7 @@ export function TruckResult({ plan, color, settings }: Props) {
                       <span className={`badge badge-${s.action}`}>{ACTION_LABEL[s.action]}</span>
                     </td>
                     <td>{s.orderId ? `${s.orderId} · ${s.machineId}` : ''}</td>
-                    <td className="r">{s.action === 'start' ? '' : fmtKm(s.legKm)}</td>
+                    <td className="r">{s.action === 'start' || s.action === 'break' ? '' : fmtKm(s.legKm)}</td>
                     <td className="r">{fmtKm(s.cumulativeKm)}</td>
                     <td>
                       <div className="load">
@@ -94,7 +101,11 @@ export function TruckResult({ plan, color, settings }: Props) {
                         </span>
                       </div>
                     </td>
-                    <td className="r">{fmtHours(s.cumulativeHours)}</td>
+                    <td className="r">
+                      {s.action === 'start' || s.action === 'return' || s.departureHours === s.arrivalHours
+                        ? fmtHours(s.arrivalHours)
+                        : `${fmtHours(s.arrivalHours)} – ${fmtHours(s.departureHours)}`}
+                    </td>
                   </tr>
                 )
               })}

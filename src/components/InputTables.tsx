@@ -36,6 +36,34 @@ function NumberCell({ value, onChange, step = 1 }: { value: number; onChange: (v
   )
 }
 
+/** Optional minutes: empty = global default (shown as placeholder); a custom value is highlighted. */
+function MinutesCell({
+  value,
+  fallback,
+  label,
+  onChange,
+}: {
+  value: number | undefined
+  fallback: number
+  label: string
+  onChange: (v: number | undefined) => void
+}) {
+  const custom = value !== undefined && value !== fallback
+  return (
+    <input
+      className={`cell-input num min${custom ? ' custom' : ''}`}
+      type="number"
+      min={0}
+      step={5}
+      aria-label={label}
+      placeholder={String(fallback)}
+      title={custom ? `Posebno vrijeme (zadano je ${fallback} min)` : `Zadano: ${fallback} min`}
+      value={value ?? ''}
+      onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+    />
+  )
+}
+
 function TextCell({ value, onChange, label }: { value: string; onChange: (v: string) => void; label: string }) {
   return <input className="cell-input" aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} />
 }
@@ -220,11 +248,17 @@ export function InputTables({ input, onChange }: Props) {
               <th className="r">Težina (kg)</th>
               <th>Preuzimanje</th>
               <th>Isporuka</th>
+              <th className="r" title="Prazno = zadano iz postavki">
+                Utovar (min)
+              </th>
+              <th className="r" title="Prazno = zadano iz postavki">
+                Istovar (min)
+              </th>
               <th />
             </tr>
           </thead>
           <tbody>
-            {input.orders.length === 0 && <EmptyRow cols={6} text="Nema naloga." />}
+            {input.orders.length === 0 && <EmptyRow cols={8} text="Nema naloga." />}
             {input.orders.map((o, i) => {
               const mi = input.machines.findIndex((m) => m.id === o.machineId)
               return (
@@ -249,6 +283,22 @@ export function InputTables({ input, onChange }: Props) {
                     <SelectCell value={o.deliveryId} options={locIds} onChange={(v) => edit((d) => void (d.orders[i].deliveryId = v))} />
                   </td>
                   <td className="r">
+                    <MinutesCell
+                      label={`Utovar ${o.id} (min)`}
+                      value={o.pickupMinutes}
+                      fallback={input.settings.handlingMinutes}
+                      onChange={(v) => edit((d) => void (d.orders[i].pickupMinutes = v))}
+                    />
+                  </td>
+                  <td className="r">
+                    <MinutesCell
+                      label={`Istovar ${o.id} (min)`}
+                      value={o.deliveryMinutes}
+                      fallback={input.settings.handlingMinutes}
+                      onChange={(v) => edit((d) => void (d.orders[i].deliveryMinutes = v))}
+                    />
+                  </td>
+                  <td className="r">
                     <RemoveButton title={`Ukloni nalog ${o.id}`} onClick={() => apply(removeOrder(input, o.id))} />
                   </td>
                 </tr>
@@ -261,7 +311,8 @@ export function InputTables({ input, onChange }: Props) {
             + Dodaj nalog
           </button>
           <span className="hint">
-            {orderBlock ?? 'Težina se uređuje po stroju. Npr. stavi 12.000 kg da vidiš upozorenje.'}
+            {orderBlock ??
+              'Težina se uređuje po stroju. Utovar/istovar: prazno znači zadano iz postavki, a veći teret može imati duže vrijeme.'}
           </span>
         </div>
       </div>

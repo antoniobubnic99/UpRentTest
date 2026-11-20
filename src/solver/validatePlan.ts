@@ -1,5 +1,5 @@
 import { distanceOptions, legKm } from './distance'
-import { limitedHours } from './solver'
+import { routeTime, withinLimit } from './time'
 import type { Plan, ProblemInput } from './types'
 
 /**
@@ -33,12 +33,20 @@ export function validatePlan(input: ProblemInput, plan: Plan): string[] {
     let loadCount = 0
     let km = 0
     let actions = 0
+    let handlingMin = 0
+    let breaks = 0
     const onBoard = new Set<string>()
     const picked = new Set<string>()
     const delivered = new Set<string>()
 
     for (let i = 1; i < steps.length; i++) {
       const s = steps[i]
+      if (s.action === 'break') {
+        breaks++
+        if (s.legKm !== 0 || s.locationId !== steps[i - 1].locationId)
+          v.push(`${name}, korak ${i}: pauza mora biti na mjestu, bez vožnje.`)
+        continue
+      }
       const expectedLeg = legKm(loc.get(steps[i - 1].locationId)!, loc.get(s.locationId)!, distOpts)
       if (Math.abs(expectedLeg - s.legKm) > 1e-9)
         v.push(`${name}, korak ${i}: dionica ${s.legKm} km, očekivano ${expectedLeg} km.`)
@@ -52,6 +60,8 @@ export function validatePlan(input: ProblemInput, plan: Plan): string[] {
           continue
         }
         const w = weight.get(order.machineId)!
+        handlingMin +=
+          (s.action === 'pickup' ? order.pickupMinutes : order.deliveryMinutes) ?? input.settings.handlingMinutes
         if (s.action === 'pickup') {
           if (s.locationId !== order.pickupId)
             v.push(`${name}: ${order.id} preuzet na ${s.locationId}, a treba na ${order.pickupId}.`)
@@ -86,11 +96,19 @@ export function validatePlan(input: ProblemInput, plan: Plan): string[] {
     }
     if (Math.abs(km - tp.totalKm) > 1e-9)
       v.push(`${name}: ukupno ${tp.totalKm} km, zbroj dionica je ${km} km.`)
-    if (
-      input.settings.timeLimitMode !== 'none' &&
-      limitedHours(km, actions, input.settings) > input.settings.maxHoursPerDay + 1e-9
-    )
+    const hasOrders = actions > 0
+    const expectedBreaks = input.settings.breakEnabled && hasOrders ? 1 : 0
+    if (breaks !== expectedBreaks)
+      v.push(`${name}: ${breaks} pauza u ruti, očekivano ${expectedBreaks}.`)
+    const time = routeTime(km, handlingMin, hasOrders, input.settings)
+    if (!withinLimit(time, input.settings))
       v.push(`${name}: prekoračen dnevni limit od ${input.settings.maxHoursPerDay} h.`)
+    if (Math.abs(last.arrivalHours - time.totalHours) > 1e-6 || Math.abs(tp.totalHours - time.totalHours) > 1e-6)
+      v.push(`${name}: prikazano radno vrijeme ne odgovara zbroju vožnje, utovara/istovara i pauze.`)
+    for (let i = 1; i < steps.length; i++) {
+      if (steps[i].arrivalHours < steps[i - 1].departureHours - 1e-9 || steps[i].departureHours < steps[i].arrivalHours - 1e-9)
+        v.push(`${name}, korak ${i}: vremena dolaska i odlaska nisu u redu.`)
+    }
   }
 
   const unassigned = new Set(plan.unassigned.map((u) => u.orderId))

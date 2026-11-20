@@ -493,6 +493,7 @@ button {
 .steps td {
   white-space: nowrap;
 }
+.steps tr.act-break td,
 .steps tr.act-start td,
 .steps tr.act-return td {
   background: var(--surface-2);
@@ -514,6 +515,11 @@ button {
 .badge-delivery {
   background: var(--black);
   color: #fff;
+}
+.badge-break {
+  background: var(--yellow-soft);
+  color: var(--ink);
+  border: 1px dashed var(--ink-2);
 }
 .badge-start,
 .badge-return {
@@ -670,4 +676,52 @@ section > .confirm-bar {
 }
 .input-grid .cell-input.num {
   width: 72px;
+}
+
+/* ---------- settings (F3) ---------- */
+.settings-modes {
+  display: grid;
+  gap: 18px;
+}
+.break-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  padding-top: 6px;
+  border-top: 1px solid var(--line-soft);
+}
+.settings-fields .break-field label.toggle {
+  flex: 1;
+  justify-content: flex-start;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 500;
+  cursor: pointer;
+}
+.break-field .unit {
+  width: 26px;
+}
+.segmented button:disabled {
+  color: var(--line);
+  cursor: not-allowed;
+}
+p.hint.warn-text {
+  color: var(--red);
+}
+/* per-order handling minutes */
+.input-grid .cell-input.num.min {
+  width: 58px;
+}
+.cell-input.custom {
+  background: var(--yellow-soft);
+  border-color: var(--black);
+  font-weight: 700;
+}
+
+.alert-info {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--graphite);
 }

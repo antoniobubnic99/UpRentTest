@@ -81,7 +81,7 @@ export interface ProblemInput {
   settings: Settings
 }
 
-export type StepAction = 'start' | 'pickup' | 'delivery' | 'return'
+export type StepAction = 'start' | 'pickup' | 'delivery' | 'break' | 'return'
 
 export interface RouteStep {
   seq: number
@@ -95,7 +95,11 @@ export interface RouteStep {
   /** Load on the truck after this step. */
   loadKg: number
   loadCount: number
-  /** Elapsed working time after this step (hours). */
+  /** Elapsed working time when the truck arrives at this step (hours from the start of the day). */
+  arrivalHours: number
+  /** Elapsed working time when the truck leaves (after loading / unloading / break). */
+  departureHours: number
+  /** Same as departureHours; kept for the step table. */
   cumulativeHours: number
 }
 
@@ -106,6 +110,8 @@ export interface TruckPlan {
   totalKm: number
   driveHours: number
   handlingHours: number
+  /** Mandatory break (0 when disabled or the truck has no orders). */
+  breakHours: number
   totalHours: number
   /** Hours counted against the daily limit under the selected mode. */
   limitedHours: number
@@ -123,4 +129,6 @@ export interface Plan {
   totalKm: number
   ordersCompleted: number
   solveMs: number
+  /** Which algorithm produced the plan (decision D3). */
+  solverUsed: 'exact' | 'heuristic'
 }

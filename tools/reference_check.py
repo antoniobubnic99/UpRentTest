@@ -4,7 +4,8 @@ Independent reference implementation (Python) used to cross-check the TypeScript
 Written separately from the app, with a different structure (top-down DP per subset +
 brute-force over the 2^5 possible splits, since only N01-N05 fit truck A).
 Run:  python3 tools/reference_check.py
-Expected: 182.2 km without time limit, 200.1 km with the 9 h (drive + handling) limit.
+Expected: 182.2 km without time limit, 200.1 km with the 9 h (drive + handling) limit,
+217.0 km with the 9 h limit and a mandatory 30 min break for every truck with orders.
 """
 import math
 from functools import lru_cache
@@ -49,18 +50,18 @@ def best_route(orders, cap, max_items):
     return f(0, tuple([0] * len(orders)))
 
 
-def hours(km, n_orders):
-    return km / SPEED + 2 * n_orders * HANDLING_H
+def hours(km, n_orders, break_h=0.0):
+    return km / SPEED + 2 * n_orders * HANDLING_H + (break_h if n_orders else 0.0)
 
 
-def solve(time_limit):
+def solve(time_limit, break_h=0.0):
     best = None
     for mask in range(32):  # only N01..N05 fit truck A
         a = tuple(i for i in range(5) if mask >> i & 1)
         b = tuple(i for i in range(10) if i not in a)
         ka, ra = best_route(a, *TRUCK_A)
         kb, rb = best_route(b, *TRUCK_B)
-        if time_limit and (hours(ka, len(a)) > MAX_H or hours(kb, len(b)) > MAX_H):
+        if time_limit and (hours(ka, len(a), break_h) > MAX_H or hours(kb, len(b), break_h) > MAX_H):
             continue
         total = round(ka + kb, 1)
         if best is None or total < best[0]:
@@ -69,8 +70,12 @@ def solve(time_limit):
 
 
 if __name__ == "__main__":
-    for label, limit in [("bez limita", False), ("limit 9 h (voznja + utovar/istovar)", True)]:
-        total, a, ka, ra, b, kb, rb = solve(limit)
+    for label, limit, brk in [
+        ("bez limita", False, 0.0),
+        ("limit 9 h (voznja + utovar/istovar)", True, 0.0),
+        ("limit 9 h + pauza 30 min", True, 0.5),
+    ]:
+        total, a, ka, ra, b, kb, rb = solve(limit, brk)
         print(f"== {label}: {total} km")
-        print(f"   A {[f'N{i + 1:02d}' for i in a]} {ka} km, {hours(ka, len(a)):.2f} h: {' '.join(ra)}")
-        print(f"   B {[f'N{i + 1:02d}' for i in b]} {kb} km, {hours(kb, len(b)):.2f} h: {' '.join(rb)}")
+        print(f"   A {[f'N{i + 1:02d}' for i in a]} {ka} km, {hours(ka, len(a), brk):.2f} h: {' '.join(ra)}")
+        print(f"   B {[f'N{i + 1:02d}' for i in b]} {kb} km, {hours(kb, len(b), brk):.2f} h: {' '.join(rb)}")

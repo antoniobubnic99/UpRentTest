@@ -101,7 +101,12 @@ export default function App() {
           <div className="section-head">
             <h2>Postavke</h2>
           </div>
-          <SettingsPanel settings={input.settings} onChange={(settings) => setInput({ ...input, settings })} />
+          <SettingsPanel
+            settings={input.settings}
+            orderCount={input.orders.length}
+            coordinateMode={input.coordinateMode}
+            onChange={(settings) => setInput({ ...input, settings })}
+          />
           <div className="run-bar">
             <button className="btn-primary" onClick={optimise}>
               Optimiziraj raspored
@@ -163,10 +168,24 @@ export default function App() {
                 </strong>
               </div>
               <div>
+                <span>Solver</span>
+                <strong title={result.plan.solverUsed === 'exact' ? 'Dokazivo optimalan raspored' : 'Heuristika: bez jamstva optimuma'}>
+                  {result.plan.solverUsed === 'exact' ? 'Egzaktni' : 'Heuristika'}
+                </strong>
+              </div>
+              <div>
                 <span>Vrijeme izračuna</span>
                 <strong>{Math.max(1, Math.round(result.plan.solveMs))} ms</strong>
               </div>
             </div>
+
+            {result.plan.solverUsed === 'heuristic' && (
+              <div className="alert alert-info">
+                Raspored je izračunala <strong>heuristika</strong> ({result.input.orders.length} naloga). Rezultat je
+                valjan prema svim pravilima, ali nema jamstva da je najkraći mogući. Za ≤ 12 naloga koristi se egzaktni
+                solver.
+              </div>
+            )}
 
             {result.plan.unassigned.length > 0 && (
               <div className="alert alert-warn">
@@ -233,8 +252,8 @@ export default function App() {
 
       <footer className="footer">
         <div className="container">
-          Egzaktni solver (dinamičko programiranje) · udaljenosti su euklidske, zaokružene na 0,1 km po dionici ·
-          prototip za Up Rent
+          Egzaktni solver (dinamičko programiranje) do 12 naloga, iznad toga heuristika · udaljenosti su zaokružene na
+          0,1 km po dionici · prototip za Up Rent
         </div>
       </footer>
     </>

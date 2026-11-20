@@ -1,6 +1,7 @@
 import type { ProblemInput } from './types'
 
-export const MAX_ORDERS = 12
+/** Above this many orders the exact solver is too slow; 'auto' switches to the heuristic (D3). */
+export const MAX_EXACT_ORDERS = 12
 
 export class InputError extends Error {
   readonly problems: string[]
@@ -80,11 +81,6 @@ export function checkInput(input: ProblemInput): string[] {
       problems.push(`Stroj ${o.machineId} se pojavljuje u više naloga.`)
     usedMachines.add(o.machineId)
   }
-
-  if (input.orders.length > MAX_ORDERS)
-    problems.push(
-      `Egzaktni solver podržava najviše ${MAX_ORDERS} naloga (zadano: ${input.orders.length}).`,
-    )
 
   const s = input.settings
   if (!(s.speedKmh > 0)) problems.push('Brzina mora biti veća od 0.')
