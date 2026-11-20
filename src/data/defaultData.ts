@@ -84,3 +84,28 @@ export function emptyInput(coordinateMode: ProblemInput['coordinateMode'] = 'xy'
 export function isEmptyInput(input: ProblemInput): boolean {
   return input.trucks.length === 0 && input.locations.length === 0 && input.orders.length === 0
 }
+
+/**
+ * Demo for the real-map mode: the task's trucks, machines and orders, with the ten
+ * locations placed in towns around Zagreb (town-centre coordinates, approximate).
+ */
+export function geoExampleInput(): ProblemInput {
+  const towns: [string, number, number][] = [
+    ['Baza (Zagreb)', 45.8131, 15.9775],
+    ['Zaprešić', 45.8566, 15.8078],
+    ['Sesvete', 45.8306, 16.1131],
+    ['Dugo Selo', 45.8072, 16.2394],
+    ['Velika Gorica', 45.7125, 16.0758],
+    ['Vrbovec', 45.8833, 16.4247],
+    ['Samobor', 45.8011, 15.711],
+    ['Ivanić-Grad', 45.7081, 16.3953],
+    ['Sveta Nedelja', 45.7978, 15.7792],
+    ['Jastrebarsko', 45.6686, 15.6519],
+  ]
+  const input = cloneDefaultInput()
+  return {
+    ...input,
+    coordinateMode: 'geo',
+    locations: towns.map(([name, lat, lon], i) => ({ id: `L${i}`, name, lat, lon })),
+  }
+}

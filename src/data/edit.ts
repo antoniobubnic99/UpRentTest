@@ -146,3 +146,21 @@ export function removeOrder(input: ProblemInput, id: string): ProblemInput {
 export function clearAll(input: ProblemInput): ProblemInput {
   return { ...emptyInput(input.coordinateMode), settings: { ...input.settings } }
 }
+
+/**
+ * Switches between the task's coordinate system and the real map. Locations from one
+ * mode are meaningless in the other, so locations and orders are removed; trucks and
+ * settings stay. The caller asks for confirmation when something would be lost.
+ */
+export function switchCoordinateMode(input: ProblemInput, mode: ProblemInput['coordinateMode']): ProblemInput {
+  if (mode === input.coordinateMode) return input
+  return { ...input, coordinateMode: mode, baseId: '', locations: [], orders: [], machines: [] }
+}
+
+/** Updates the position of a location in geo mode (map click / drag / geocoder). */
+export function moveLocation(input: ProblemInput, id: string, lat: number, lon: number): ProblemInput {
+  return {
+    ...input,
+    locations: input.locations.map((l) => (l.id === id ? { ...l, lat, lon } : l)),
+  }
+}

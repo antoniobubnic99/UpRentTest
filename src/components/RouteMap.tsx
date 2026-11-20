@@ -1,16 +1,19 @@
+import { truckColor } from '../colors'
 import type { Plan, ProblemInput } from '../solver'
 
 interface Props {
   input: ProblemInput
   plan: Plan
-  colors: string[]
+  /** ids of trucks to draw (vehicle filter) */
+  visible: Set<string>
 }
 
 const W = 640
 const H = 440
 const PAD = 36
 
-export function RouteMap({ input, plan, colors }: Props) {
+export function RouteMap({ input, plan, visible }: Props) {
+  const colors = plan.trucks.map((_, i) => truckColor(i))
   const xs = input.locations.map((l) => l.x ?? 0)
   const ys = input.locations.map((l) => l.y ?? 0)
   const minX = Math.min(...xs) - 2
@@ -31,7 +34,7 @@ export function RouteMap({ input, plan, colors }: Props) {
 
   return (
     <div className="card">
-      <h3>Karta ruta</h3>
+      <h3>Karta ruta (koordinatni sustav)</h3>
       <svg viewBox={`0 0 ${W} ${H}`} className="map" role="img" aria-label="Karta lokacija i ruta kamiona">
         <defs>
           {colors.map((c, i) => (
@@ -49,6 +52,7 @@ export function RouteMap({ input, plan, colors }: Props) {
         ))}
 
         {plan.trucks.map((tp, ti) => {
+          if (!visible.has(tp.truck.id)) return null
           const offset = (ti - (plan.trucks.length - 1) / 2) * 3
           return tp.steps.slice(1).map((s, k) => {
             const a = loc.get(tp.steps[k].locationId)!
@@ -104,7 +108,7 @@ export function RouteMap({ input, plan, colors }: Props) {
       </svg>
       <div className="legend">
         {plan.trucks.map((tp, i) => (
-          <span key={tp.truck.id}>
+          <span key={tp.truck.id} className={visible.has(tp.truck.id) ? '' : 'off'}>
             <span className="swatch" style={{ background: colors[i] }} /> {tp.truck.name}
           </span>
         ))}

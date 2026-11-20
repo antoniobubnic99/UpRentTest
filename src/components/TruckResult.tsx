@@ -5,6 +5,7 @@ interface Props {
   plan: TruckPlan
   color: string
   settings: Settings
+  selectedSeq?: number
 }
 
 const ACTION_LABEL = {
@@ -15,13 +16,13 @@ const ACTION_LABEL = {
   return: 'Povratak',
 } as const
 
-export function TruckResult({ plan, color, settings }: Props) {
+export function TruckResult({ plan, color, settings, selectedSeq }: Props) {
   const { truck } = plan
   const limitOn = settings.timeLimitMode !== 'none'
   const overLimit = limitOn && plan.limitedHours > settings.maxHoursPerDay + 1e-9
 
   return (
-    <div className="card truck">
+    <div className="card truck" id={`truck-${truck.id}`}>
       <div className="truck-head">
         <span className="swatch" style={{ background: color }} />
         <h3>{truck.name}</h3>
@@ -80,7 +81,11 @@ export function TruckResult({ plan, color, settings }: Props) {
               {plan.steps.map((s) => {
                 const pct = Math.min(100, (s.loadKg / truck.capacityKg) * 100)
                 return (
-                  <tr key={s.seq} className={`act-${s.action}`}>
+                  <tr
+                    key={s.seq}
+                    id={`step-${truck.id}-${s.seq}`}
+                    className={`act-${s.action}${selectedSeq === s.seq ? ' selected' : ''}`}
+                  >
                     <td className="r muted">{s.seq}</td>
                     <td>
                       <strong>{s.locationId}</strong>

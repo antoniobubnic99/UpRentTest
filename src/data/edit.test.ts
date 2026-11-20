@@ -3,12 +3,14 @@ import { solve } from '../solver/solver'
 import type { ProblemInput } from '../solver/types'
 import { checkInput } from '../solver/validateInput'
 import { validatePlan } from '../solver/validatePlan'
-import { cloneDefaultInput, emptyInput, isEmptyInput } from './defaultData'
+import { cloneDefaultInput, emptyInput, geoExampleInput, isEmptyInput } from './defaultData'
 import {
   addLocation,
   addOrder,
   addTruck,
   cannotAddOrderReason,
+  moveLocation,
+  switchCoordinateMode,
   clearAll,
   nextTruckId,
   ordersUsingLocation,
@@ -207,5 +209,50 @@ describe('F2: new input check', () => {
     const input = cloneDefaultInput()
     input.orders[0].deliveryId = input.orders[0].pickupId
     expect(checkInput(input)).toEqual(['Nalog N01: preuzimanje i isporuka su na istoj lokaciji (L1).'])
+  })
+})
+
+describe('F7: real-map mode', () => {
+  it('switching the coordinate mode removes locations and orders, keeps trucks and settings', () => {
+    const input = cloneDefaultInput()
+    input.settings.breakEnabled = true
+    const geo = switchCoordinateMode(input, 'geo')
+    expect(geo.coordinateMode).toBe('geo')
+    expect(geo.locations).toEqual([])
+    expect(geo.orders).toEqual([])
+    expect(geo.machines).toEqual([])
+    expect(geo.baseId).toBe('')
+    expect(geo.trucks).toEqual(input.trucks)
+    expect(geo.settings).toEqual(input.settings)
+    expect(switchCoordinateMode(geo, 'geo')).toBe(geo)
+  })
+
+  it('locations added in geo mode carry lat/lon and address, not x/y', () => {
+    let input = switchCoordinateMode(emptyInput(), 'geo')
+    input = addLocation(input, { name: 'Velika Gorica', lat: 45.7125, lon: 16.0758, address: 'Velika Gorica, Hrvatska' })
+    expect(input.locations[0]).toEqual({
+      id: 'L0',
+      name: 'Velika Gorica',
+      lat: 45.7125,
+      lon: 16.0758,
+      address: 'Velika Gorica, Hrvatska',
+    })
+    expect(input.baseId).toBe('L0')
+  })
+
+  it('moving a marker updates only that location', () => {
+    const input = geoExampleInput()
+    const moved = moveLocation(input, 'L3', 45.8, 16.25)
+    expect(moved.locations.find((l) => l.id === 'L3')).toMatchObject({ lat: 45.8, lon: 16.25 })
+    expect(moved.locations.filter((l) => l.id !== 'L3')).toEqual(input.locations.filter((l) => l.id !== 'L3'))
+  })
+
+  it('the Zagreb-area example is valid, solves exactly and passes the validator', () => {
+    const input = geoExampleInput()
+    expect(checkInput(input)).toEqual([])
+    const plan = solve(input)
+    expect(plan.solverUsed).toBe('exact')
+    expect(plan.ordersCompleted + plan.unassigned.length).toBe(10)
+    expect(validatePlan(input, plan)).toEqual([])
   })
 })
