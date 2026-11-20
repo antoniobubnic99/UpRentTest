@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { cloneDefaultInput } from '../data/defaultData'
+import { cloneDefaultInput, defaultSettings } from '../data/defaultData'
 import { legKm } from './distance'
 import { limitedHours, solve } from './solver'
 import type { Plan, ProblemInput, TimeLimitMode } from './types'
@@ -180,6 +180,7 @@ function randomInput(seed: number, nOrders: number): ProblemInput {
     return { id: `N${i}`, machineId: m.id, pickupId: `L${p}`, deliveryId: `L${d}` }
   })
   return {
+    coordinateMode: 'xy',
     baseId: 'L0',
     trucks: [
       { id: 'A', name: 'A', capacityKg: 3500, maxItems: 2 },
@@ -188,7 +189,7 @@ function randomInput(seed: number, nOrders: number): ProblemInput {
     machines,
     locations,
     orders,
-    settings: { speedKmh: 60, handlingMinutes: 20, maxHoursPerDay: 4, timeLimitMode: 'drive+handling' },
+    settings: { ...defaultSettings, maxHoursPerDay: 4 },
   }
 }
 

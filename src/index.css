@@ -590,3 +590,15 @@ button {
   margin-top: 10px;
   font-size: 13px;
 }
+
+/* ---------- empty state ---------- */
+.empty-state {
+  text-align: center;
+  padding: 40px 24px;
+}
+.empty-state h3 {
+  margin: 0 0 8px;
+}
+.empty-state p {
+  margin: 0 0 20px;
+}

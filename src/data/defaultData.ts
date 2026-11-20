@@ -1,7 +1,20 @@
-import type { ProblemInput } from '../solver/types'
+import type { ProblemInput, Settings } from '../solver/types'
+
+/** Default settings; the break is off so the task data still gives 200,1 km (decision D1). */
+export const defaultSettings: Settings = {
+  speedKmh: 60,
+  handlingMinutes: 20,
+  maxHoursPerDay: 9,
+  timeLimitMode: 'drive+handling',
+  breakEnabled: false,
+  breakMinutes: 30,
+  solverMode: 'auto',
+  roadFactor: 1.3,
+}
 
 /** Input data exactly as given in the UP RENT task description. */
 export const defaultInput: ProblemInput = {
+  coordinateMode: 'xy',
   baseId: 'L0',
   trucks: [
     { id: 'A', name: 'Kamion A', capacityKg: 3500, maxItems: 2 },
@@ -43,15 +56,31 @@ export const defaultInput: ProblemInput = {
     { id: 'N09', machineId: 'M09', pickupId: 'L6', deliveryId: 'L1' },
     { id: 'N10', machineId: 'M10', pickupId: 'L7', deliveryId: 'L3' },
   ],
-  settings: {
-    speedKmh: 60,
-    handlingMinutes: 20,
-    maxHoursPerDay: 9,
-    timeLimitMode: 'drive+handling',
-  },
+  settings: { ...defaultSettings },
 }
 
 /** Deep copy so the UI can edit data without mutating the defaults. */
 export function cloneDefaultInput(): ProblemInput {
   return structuredClone(defaultInput)
+}
+
+/**
+ * Empty starting state (requirement 3): no trucks, locations or orders.
+ * Settings stay at their defaults so the user only has to fill in the data.
+ */
+export function emptyInput(coordinateMode: ProblemInput['coordinateMode'] = 'xy'): ProblemInput {
+  return {
+    coordinateMode,
+    baseId: '',
+    trucks: [],
+    machines: [],
+    locations: [],
+    orders: [],
+    settings: { ...defaultSettings },
+  }
+}
+
+/** True when there is nothing to plan yet. */
+export function isEmptyInput(input: ProblemInput): boolean {
+  return input.trucks.length === 0 && input.locations.length === 0 && input.orders.length === 0
 }

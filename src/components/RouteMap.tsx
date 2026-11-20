@@ -11,8 +11,8 @@ const H = 440
 const PAD = 36
 
 export function RouteMap({ input, plan, colors }: Props) {
-  const xs = input.locations.map((l) => l.x)
-  const ys = input.locations.map((l) => l.y)
+  const xs = input.locations.map((l) => l.x ?? 0)
+  const ys = input.locations.map((l) => l.y ?? 0)
   const minX = Math.min(...xs) - 2
   const maxX = Math.max(...xs) + 2
   const minY = Math.min(...ys) - 2
@@ -54,10 +54,10 @@ export function RouteMap({ input, plan, colors }: Props) {
             const a = loc.get(tp.steps[k].locationId)!
             const b = loc.get(s.locationId)!
             if (a.id === b.id) return null
-            const x1 = px(a.x)
-            const y1 = py(a.y)
-            const x2 = px(b.x)
-            const y2 = py(b.y)
+            const x1 = px(a.x ?? 0)
+            const y1 = py(a.y ?? 0)
+            const x2 = px(b.x ?? 0)
+            const y2 = py(b.y ?? 0)
             const len = Math.hypot(x2 - x1, y2 - y1)
             const nx = (-(y2 - y1) / len) * offset
             const ny = ((x2 - x1) / len) * offset
@@ -86,7 +86,7 @@ export function RouteMap({ input, plan, colors }: Props) {
         {input.locations.map((l) => {
           const isBase = l.id === input.baseId
           return (
-            <g key={l.id} transform={`translate(${px(l.x)},${py(l.y)})`}>
+            <g key={l.id} transform={`translate(${px(l.x ?? 0)},${py(l.y ?? 0)})`}>
               {isBase ? (
                 <rect x={-10} y={-10} width={20} height={20} className="node-base" />
               ) : (

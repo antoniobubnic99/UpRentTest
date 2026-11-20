@@ -107,10 +107,10 @@ export function InputTables({ input, onChange }: Props) {
                   <strong>{l.id}</strong> {l.id === input.baseId && <span className="tag">Baza</span>}
                 </td>
                 <td className="r">
-                  <NumberCell value={l.x} onChange={(v) => edit((d) => void (d.locations[i].x = v))} />
+                  <NumberCell value={l.x ?? NaN} onChange={(v) => edit((d) => void (d.locations[i].x = v))} />
                 </td>
                 <td className="r">
-                  <NumberCell value={l.y} onChange={(v) => edit((d) => void (d.locations[i].y = v))} />
+                  <NumberCell value={l.y ?? NaN} onChange={(v) => edit((d) => void (d.locations[i].y = v))} />
                 </td>
               </tr>
             ))}

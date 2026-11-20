@@ -1,4 +1,4 @@
-import { deciToKm, legDeciKm } from './distance'
+import { deciToKm, distanceOptions, legDeciKm } from './distance'
 import type {
   Location,
   Plan,
@@ -297,7 +297,8 @@ export function solve(input: ProblemInput): Plan {
   const locIndex = new Map(input.locations.map((l, i) => [l.id, i]))
   const machineWeight = new Map(input.machines.map((m) => [m.id, m.weightKg]))
   const base = locIndex.get(input.baseId)!
-  const dist = input.locations.map((a) => input.locations.map((b) => legDeciKm(a, b)))
+  const distOpts = distanceOptions(input)
+  const dist = input.locations.map((a) => input.locations.map((b) => legDeciKm(a, b, distOpts)))
 
   const orders: PreparedOrder[] = input.orders.map((o) => ({
     id: o.id,

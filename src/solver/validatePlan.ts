@@ -1,4 +1,4 @@
-import { legKm } from './distance'
+import { distanceOptions, legKm } from './distance'
 import { limitedHours } from './solver'
 import type { Plan, ProblemInput } from './types'
 
@@ -13,6 +13,7 @@ export function validatePlan(input: ProblemInput, plan: Plan): string[] {
   const weight = new Map(input.machines.map((m) => [m.id, m.weightKg]))
   const orderById = new Map(input.orders.map((o) => [o.id, o]))
   const servedBy = new Map<string, string>()
+  const distOpts = distanceOptions(input)
 
   for (const tp of plan.trucks) {
     const { truck, steps } = tp
@@ -38,7 +39,7 @@ export function validatePlan(input: ProblemInput, plan: Plan): string[] {
 
     for (let i = 1; i < steps.length; i++) {
       const s = steps[i]
-      const expectedLeg = legKm(loc.get(steps[i - 1].locationId)!, loc.get(s.locationId)!)
+      const expectedLeg = legKm(loc.get(steps[i - 1].locationId)!, loc.get(s.locationId)!, distOpts)
       if (Math.abs(expectedLeg - s.legKm) > 1e-9)
         v.push(`${name}, korak ${i}: dionica ${s.legKm} km, očekivano ${expectedLeg} km.`)
       km = Math.round((km + expectedLeg) * 10) / 10

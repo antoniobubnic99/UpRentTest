@@ -3,7 +3,7 @@ import { InputTables } from './components/InputTables'
 import { RouteMap } from './components/RouteMap'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TruckResult } from './components/TruckResult'
-import { cloneDefaultInput } from './data/defaultData'
+import { cloneDefaultInput, emptyInput, isEmptyInput } from './data/defaultData'
 import { fmtKm } from './format'
 import { InputError, solve, validatePlan, type Plan, type ProblemInput } from './solver'
 
@@ -13,6 +13,7 @@ const TRUCK_COLORS = ['#FFFF00', '#4B5563', '#F59E0B', '#9CA3AF']
 type Result =
   | { kind: 'ok'; plan: Plan; violations: string[]; input: ProblemInput }
   | { kind: 'error'; problems: string[] }
+  | { kind: 'none' }
 
 function run(input: ProblemInput): Result {
   try {
@@ -25,8 +26,10 @@ function run(input: ProblemInput): Result {
 }
 
 export default function App() {
-  const [input, setInput] = useState<ProblemInput>(cloneDefaultInput)
-  const [result, setResult] = useState<Result>(() => run(input))
+  // Requirement 3: start empty; "Vrati podatke iz zadatka" fills in the task data.
+  const [input, setInput] = useState<ProblemInput>(() => emptyInput())
+  const [result, setResult] = useState<Result>({ kind: 'none' })
+  const empty = isEmptyInput(input)
   const [showInputs, setShowInputs] = useState(true)
 
   const stale = result.kind === 'ok' && result.input !== input
@@ -79,6 +82,18 @@ export default function App() {
             {stale && <span className="stale">Podaci su promijenjeni. Pokreni optimizaciju ponovno.</span>}
           </div>
         </section>
+
+        {empty && result.kind === 'none' && (
+          <div className="card empty-state">
+            <h3>Još nema podataka za planiranje</h3>
+            <p className="muted">
+              Dodaj vozila, lokacije i naloge ili učitaj primjer iz zadatka (2 kamiona, 10 lokacija, 10 naloga).
+            </p>
+            <button className="btn-primary" onClick={reset}>
+              Vrati podatke iz zadatka
+            </button>
+          </div>
+        )}
 
         {result.kind === 'error' && (
           <div className="alert alert-error">

@@ -10,11 +10,24 @@ export interface Machine {
   weightKg: number
 }
 
+/**
+ * How locations are positioned. A data set uses exactly one mode:
+ * - 'xy': abstract coordinate system in km (the task data)
+ * - 'geo': real map positions (latitude / longitude)
+ */
+export type CoordinateMode = 'xy' | 'geo'
+
 export interface Location {
   id: string
   name: string
-  x: number
-  y: number
+  /** km on the abstract grid ('xy' mode) */
+  x?: number
+  y?: number
+  /** degrees ('geo' mode) */
+  lat?: number
+  lon?: number
+  /** free-text address, informational only ('geo' mode) */
+  address?: string
 }
 
 export interface Order {
@@ -22,6 +35,10 @@ export interface Order {
   machineId: string
   pickupId: string
   deliveryId: string
+  /** Loading time at pickup; falls back to Settings.handlingMinutes when not set. */
+  pickupMinutes?: number
+  /** Unloading time at delivery; falls back to Settings.handlingMinutes when not set. */
+  deliveryMinutes?: number
 }
 
 /**
@@ -32,14 +49,30 @@ export interface Order {
  */
 export type TimeLimitMode = 'drive+handling' | 'drive' | 'none'
 
+/**
+ * Which solver to run:
+ * - 'auto': exact for up to MAX_EXACT_ORDERS orders, heuristic above that (default)
+ * - 'exact': always exact (refused above MAX_EXACT_ORDERS)
+ * - 'heuristic': always heuristic
+ */
+export type SolverMode = 'auto' | 'exact' | 'heuristic'
+
 export interface Settings {
   speedKmh: number
+  /** Default loading / unloading time per action (minutes). */
   handlingMinutes: number
   maxHoursPerDay: number
   timeLimitMode: TimeLimitMode
+  /** Mandatory lunch break for every truck that has at least one order. */
+  breakEnabled: boolean
+  breakMinutes: number
+  solverMode: SolverMode
+  /** 'geo' mode only: straight-line distance is multiplied by this factor to approximate roads. */
+  roadFactor: number
 }
 
 export interface ProblemInput {
+  coordinateMode: CoordinateMode
   baseId: string
   trucks: Truck[]
   machines: Machine[]
