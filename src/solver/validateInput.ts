@@ -67,6 +67,8 @@ export function checkInput(input: ProblemInput): string[] {
     if (!machineIds.has(o.machineId)) problems.push(`Nalog ${o.id}: stroj ${o.machineId} ne postoji.`)
     if (!locIds.has(o.pickupId)) problems.push(`Nalog ${o.id}: lokacija preuzimanja ${o.pickupId} ne postoji.`)
     if (!locIds.has(o.deliveryId)) problems.push(`Nalog ${o.id}: lokacija isporuke ${o.deliveryId} ne postoji.`)
+    if (o.pickupId === o.deliveryId)
+      problems.push(`Nalog ${o.id}: preuzimanje i isporuka su na istoj lokaciji (${o.pickupId}).`)
     for (const [label, v] of [
       ['utovara', o.pickupMinutes],
       ['istovara', o.deliveryMinutes],

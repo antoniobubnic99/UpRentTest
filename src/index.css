@@ -602,3 +602,72 @@ button {
 .empty-state p {
   margin: 0 0 20px;
 }
+
+/* ---------- data editing (F2) ---------- */
+.btn-secondary:disabled {
+  background: var(--line);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+.btn-danger {
+  background: #b91c1c;
+  color: #fff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-danger:hover {
+  background: #991b1b;
+}
+.confirm-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--black);
+  font-size: 14px;
+}
+.confirm-warn {
+  background: var(--yellow-soft);
+  border-left: 6px solid #b91c1c;
+}
+.confirm-info {
+  background: #fff;
+  border-left: 6px solid var(--yellow);
+}
+.confirm-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+td.empty-row {
+  color: var(--muted);
+  font-style: italic;
+  padding: 10px 8px;
+}
+th.c,
+td.c {
+  text-align: center;
+}
+section > .confirm-bar {
+  margin-bottom: 16px;
+}
+/* keep editable tables inside their card (also for the narrow drawer in F1) */
+.input-grid > .card {
+  min-width: 0;
+  overflow-x: auto;
+}
+.input-grid input.cell-input:not(.num) {
+  width: 100%;
+  min-width: 64px;
+  box-sizing: border-box;
+}
+.input-grid .cell-input.num {
+  width: 72px;
+}

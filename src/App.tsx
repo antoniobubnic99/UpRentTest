@@ -4,6 +4,7 @@ import { RouteMap } from './components/RouteMap'
 import { SettingsPanel } from './components/SettingsPanel'
 import { TruckResult } from './components/TruckResult'
 import { cloneDefaultInput, emptyInput, isEmptyInput } from './data/defaultData'
+import { clearAll } from './data/edit'
 import { fmtKm } from './format'
 import { InputError, solve, validatePlan, type Plan, type ProblemInput } from './solver'
 
@@ -31,6 +32,7 @@ export default function App() {
   const [result, setResult] = useState<Result>({ kind: 'none' })
   const empty = isEmptyInput(input)
   const [showInputs, setShowInputs] = useState(true)
+  const [confirmClear, setConfirmClear] = useState(false)
 
   const stale = result.kind === 'ok' && result.input !== input
   const optimise = () => setResult(run(input))
@@ -38,6 +40,12 @@ export default function App() {
     const fresh = cloneDefaultInput()
     setInput(fresh)
     setResult(run(fresh))
+    setConfirmClear(false)
+  }
+  const clear = () => {
+    setInput(clearAll(input))
+    setResult({ kind: 'none' })
+    setConfirmClear(false)
   }
 
   const machineWeight = useMemo(() => new Map(input.machines.map((m) => [m.id, m.weightKg])), [input])
@@ -62,11 +70,30 @@ export default function App() {
               <button className="btn-link" onClick={() => setShowInputs((v) => !v)}>
                 {showInputs ? 'Sakrij' : 'Prikaži'}
               </button>
+              <button className="btn-secondary" disabled={empty} onClick={() => setConfirmClear(true)}>
+                Obriši sve
+              </button>
               <button className="btn-secondary" onClick={reset}>
                 Vrati podatke iz zadatka
               </button>
             </div>
           </div>
+          {confirmClear && (
+            <div className="confirm-bar confirm-warn" role="alert">
+              <span>
+                Obrisati sva vozila ({input.trucks.length}), lokacije ({input.locations.length}) i naloge (
+                {input.orders.length})? Postavke ostaju.
+              </span>
+              <span className="confirm-actions">
+                <button className="btn-danger" onClick={clear}>
+                  Obriši sve
+                </button>
+                <button className="btn-link" onClick={() => setConfirmClear(false)}>
+                  Odustani
+                </button>
+              </span>
+            </div>
+          )}
           {showInputs && <InputTables input={input} onChange={setInput} />}
         </section>
 
