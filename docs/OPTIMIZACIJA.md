@@ -172,14 +172,25 @@ Heuristika **nema jamstvo optimuma**, i to aplikacija jasno navodi. Zato *Automa
 Skup podataka je u jednom od dva načina, bez miješanja:
 
 - **koordinatni sustav** iz zadatka (km), s euklidskom udaljenosti
-- **stvarna karta** (geografska širina i dužina), s udaljenosti **haversine × faktor ceste**:
-  - R = 6371,0088 km
-  - faktor je po defaultu 1,3 i može se podesiti
-  - zaokružuje se na 0,1 km po dionici, kao i u XY načinu
+- **stvarna karta** (geografska širina i dužina), s jednim od dva izvora udaljenosti (postavka *Udaljenosti na stvarnoj karti*):
+  - **po cestama (OSRM), zadano:** prije optimizacije aplikacija dohvaća matricu stvarnih udaljenosti vožnje između svih lokacija (OSRM table servis, OpenStreetMap cestovna mreža). Solver i validator koriste tu matricu, svaka dionica se zaokružuje na 0,1 km, a karta crta rute po cestama.
+  - **zračna × faktor:** haversine (R = 6371,0088 km) × faktor ceste (zadano 1,3). Radi bez interneta i služi kao **rezerva**: ako servis za rute nije dostupan, aplikacija automatski koristi ovaj izračun i to javlja iznad rezultata.
 
-Faktor ceste je gruba, ali transparentna aproksimacija stvarne cestovne udaljenosti. Ne ovisi o vanjskom servisu, pa radi i offline i ponovljiva je. Prirodni sljedeći korak su stvarne cestovne udaljenosti iz OSRM-a ili Google Distance Matrix API-ja (matrica udaljenosti umjesto formule). Solver se pri tome ne mijenja, jer radi nad matricom udaljenosti.
+Solver se ne mijenja: radi nad matricom udaljenosti, bez obzira na njezin izvor. Vrijeme vožnje i dalje se računa kao km / prosječna brzina (60 km/h, pretpostavka iz zadatka), a ne iz OSRM trajanja. Tako je limit od 9 h usporediv s podacima iz zadatka.
 
-Lokacije se unose klikom na kartu, pretragom adrese (Nominatim, najviše 1 upit u sekundi), povlačenjem markera ili ručnim upisom koordinata. Ručni unos uvijek radi, i kad javni servisi nisu dostupni.
+Javni OSRM server namijenjen je laganom korištenju, pa se rezultati spremaju u cache. U produkciji bi to bio vlastiti OSRM ili komercijalni API (Google, HERE, Mapbox), s istim sučeljem prema solveru.
+
+**Unos lokacija:**
+- klik na kartu
+- pretraga adrese (Nominatim, najviše 1 upit u sekundi), s kvartom, gradom i poštanskim brojem
+- lijepljenje koordinata ili linka iz Google karata
+- povlačenje markera
+- ručni unos koordinata
+- uvoz CSV-a s adresama, koje se onda geokodiraju jedna po jedna
+
+Kućni brojevi postoje samo tamo gdje su upisani u OpenStreetMap. Kad broja nema, rezultat je ulica, uz napomenu da se marker povuče na točno mjesto.
+
+**„Otvori u Google kartama”** gradi Google Maps URL za navigaciju s redoslijedom stanica vozila. Takav URL prima najviše 9 međutočaka, pa se dulje rute dijele na nastavke (kraj jednog dijela je početak sljedećeg).
 
 ### 5.6 Usporedba scenarija
 

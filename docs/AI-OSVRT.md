@@ -71,7 +71,18 @@ Završni detalji (mobilni prikaz, usporedba scenarija, ispis za vozača, uvoz/iz
 - **Ispis:** pregledan kao generirani PDF.
 - **Mobitel:** provjereno na širinama 360 i 390 px, bez horizontalnog prelijevanja.
 
-Ukupno je **157 testova**, a svi prolaze.
+Za cestovne rute, pretragu adresa i CSV predloške:
+
+- **Javni servisi su prvo isprobani izravno iz preglednika.** OSRM daje Zagreb–Velika Gorica 20,1 km cestom. Nominatim za „Ilica 10” vraća kućni broj, a za „Horvatova ulica 13” samo ulicu, jer kućni broj nije u OpenStreetMap podacima. Zato aplikacija u tom slučaju jasno upozorava, umjesto da tiho stavi marker na ulicu.
+- **Testovi:**
+  - solver i validator koriste cestovnu matricu
+  - kad servis ne radi, koristi se rezervni izračun i to se javlja
+  - OSRM URL-ovi i greške
+  - Google Maps linkovi, uključujući podjelu dugih ruta
+  - CSV predlošci se uvoze bez greške
+  - uvoz u oba smjera za vozila i lokacije (koordinatni sustav i dalje daje 200,1 km)
+
+Ukupno je **176 testova**, a svi prolaze.
 
 ## Zaključak
 

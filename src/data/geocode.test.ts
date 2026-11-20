@@ -26,9 +26,15 @@ describe('F7: Nominatim address search', () => {
       clock.sleep,
     )
     const r = await search('Velika Gorica')
-    expect(r).toEqual([
-      { name: 'Velika Gorica', address: 'Velika Gorica, Zagrebačka županija, Hrvatska', lat: 45.7125, lon: 16.0758 },
-    ])
+    expect(r).toHaveLength(1)
+    expect(r[0]).toMatchObject({
+      name: 'Velika Gorica',
+      address: 'Velika Gorica, Zagrebačka županija, Hrvatska',
+      lat: 45.7125,
+      lon: 16.0758,
+      houseNumberMissing: false,
+    })
+    expect(urls[0]).toContain('addressdetails=1')
     expect(urls[0]).toContain('countrycodes=hr')
     expect(urls[0]).toContain('format=jsonv2')
   })

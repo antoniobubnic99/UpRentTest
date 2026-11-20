@@ -62,23 +62,25 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 - **Obavezna pauza (gablec)** kao opcija u postavkama: prekidač i trajanje, po defaultu isključena.
 - **Solver: Automatski / Egzaktni / Heuristika.** Do 12 naloga radi egzaktni solver, a iznad toga se automatski uključuje heuristika (testirano do 50 naloga i 5 vozila). UI uvijek prikazuje koji je solver korišten.
 - **Linija vremena** po vozilu: vožnja, utovar, istovar, pauza i dnevni limit na zajedničkoj osi. Klik na točku označava korak u tablici.
-- **Prava karta** (Leaflet + OpenStreetMap) i **unos stvarnih lokacija:**
+- **Prava karta** (Leaflet + OpenStreetMap) s **rutama po cestama** (OSRM). Na stvarnoj karti optimizacija koristi **stvarne cestovne udaljenosti**. Ako servis nije dostupan, koristi se zračna udaljenost × faktor ceste (1,3) i aplikacija to javlja.
+- **Unos stvarnih lokacija:**
   - klik na kartu
-  - pretraga adrese (Nominatim)
+  - pretraga adrese (Nominatim), s kvartom, gradom i poštanskim brojem
+  - lijepljenje koordinata ili linka iz Google karata
   - povlačenje markera
   - ručni unos koordinata
 
-  Udaljenost je zračna linija × faktor ceste (default 1,3). Postoji i primjer s mjestima u okolici Zagreba.
+  Kućni brojevi postoje samo gdje su upisani u OpenStreetMap. Kad broja nema, aplikacija to kaže i stavi marker na ulicu. Postoji i primjer s mjestima u okolici Zagreba.
+- **„Otvori u Google kartama”** za svako vozilo: ruta s redoslijedom stanica, za navigaciju na mobitelu. Duge rute dijele se na dijelove, jer Google prima najviše 9 međutočaka.
 - **Filter vozila** za liniju vremena, kartu i detalje: jedno, više ili sva vozila.
 - **Raspored ekrana:** ulazni podaci i ograničenja su u lijevom izborniku iza hamburgera, a rezultati desno. Na mobitelu se izbornik otvara preko sadržaja.
 - **Usporedba scenarija:** isti podaci u tri tumačenja radnog dana jedan pored drugog: bez limita 182,2 km, limit 9 h 200,1 km, limit uz pauzu 217,0 km. Objašnjenje je generirano iz samih planova: koji nalozi prelaze na koje vozilo, koliko km „košta” ograničenje i zašto najkraći plan nije izvediv. Svaki scenarij se može primijeniti jednim klikom.
 - **Ispis plana za vozača:** jedna A4 stranica po vozilu, s redoslijedom, satnicom (početak u 07:00), lokacijama, radnjama, strojevima, teretom, stupcem za kvačicu i mjestom za potpis. U pregledniku se sprema kao PDF ([primjer](docs/primjer-plan-voznje.pdf)).
-- **Uvoz i izvoz:**
-  - cijeli skup kao JSON
-  - nalozi kao CSV za Excel (`;`, decimalni zarez, UTF-8)
-  - **link za dijeljenje** koji sadrži podatke u samom URL-u (komprimirano, ništa se ne šalje na server)
-
-  Uvoz se provjerava i javlja greške s brojem retka.
+- **Uvoz i izvoz preko Excela (CSV)** za vozila, lokacije i naloge:
+  - **predlošci za preuzimanje**: upišeš podatke i učitaš datoteku
+  - lokacije mogu imati samo adresu, a koordinate se traže automatski
+  - uvoz se provjerava i javlja greške s brojem retka
+- **Cijeli skup kao JSON** i **link za dijeljenje** koji sadrži podatke u samom URL-u (komprimirano, ništa se ne šalje na server).
 - **Prilagođeno mobitelu:** koraci rute kao kartice, linija vremena preko cijele širine i polja bez zumiranja na iPhoneu.
 - **Izgled u stilu uprent.hr** (logo, boje, header), uz napomenu da je riječ o prototipu, a ne službenom proizvodu.
 
@@ -111,7 +113,9 @@ src/
     defaultData.ts           # podaci iz zadatka, prazno stanje, primjer za kartu
     edit.ts                  # dodavanje/brisanje uz referencijalni integritet
     geocode.ts               # pretraga adresa (Nominatim, najviše 1 upit/s)
-    io.ts                    # JSON / CSV uvoz i izvoz, link za dijeljenje
+    io.ts                    # JSON / CSV uvoz i izvoz, predlošci, link za dijeljenje
+    routing.ts               # cestovne udaljenosti i rute (OSRM)
+    googleMaps.ts            # linkovi „Otvori u Google kartama”
   components/                # React UI (drawer, linija vremena, karte, rezultati)
 tools/reference_check.py     # nezavisna Python provjera
 docs/                        # dokumentacija za predaju
@@ -119,7 +123,7 @@ docs/                        # dokumentacija za predaju
 
 ## Testovi
 
-`npm test` pokreće **157 test caseova**.
+`npm test` pokreće **176 test caseova**.
 
 ### Poslovna ograničenja iz zadatka (`src/solver/solver.test.ts`)
 
@@ -143,6 +147,7 @@ docs/                        # dokumentacija za predaju
 | `src/data/geocode.test.ts` | Pretraga adresa: najviše 1 upit u sekundi, obrada rezultata i grešaka |
 | `src/solver/scenarios.test.ts` | Usporedba scenarija: 182,2 / 200,1 / 217,0 km i generirana objašnjenja (npr. „Kamion B bi radio 9 h 42 min”) |
 | `src/data/io.test.ts` | JSON i CSV u oba smjera, Excel format (BOM, zarez, navodnici), greške s brojem retka, link za dijeljenje |
+| `src/data/roads-and-csv.test.ts` | Cestovne udaljenosti u solveru i validatoru, rezervna zračna udaljenost, OSRM pozivi i greške, koordinate i Google Maps linkovi, oznaka kad kućni broj nije u OSM-u, CSV predlošci i uvoz vozila i lokacija |
 
 ## Dokumentacija za predaju
 
@@ -152,4 +157,4 @@ docs/                        # dokumentacija za predaju
 
 ## Napomena
 
-Ovo je prototip izrađen u sklopu selekcijskog zadatka i nije službeni proizvod Up Rent d.o.o. Karta: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors. Pretraga adresa: [Nominatim](https://nominatim.org/), uz poštivanje [pravila korištenja](https://operations.osmfoundation.org/policies/nominatim/).
+Ovo je prototip izrađen u sklopu selekcijskog zadatka i nije službeni proizvod Up Rent d.o.o. Karta: © [OpenStreetMap](https://www.openstreetmap.org/copyright) contributors. Pretraga adresa: [Nominatim](https://nominatim.org/), uz poštivanje [pravila korištenja](https://operations.osmfoundation.org/policies/nominatim/). Cestovne rute: [OSRM](https://project-osrm.org/) (javni demo server; za produkciju vlastiti OSRM ili komercijalni API).

@@ -35,9 +35,11 @@ Predviđeno trajanje zadatka: **6 h**.
 | 20.11.2026. | 18:46–18:48 | 0 h 02 min | Usporedba scenarija s objašnjenjima |
 | 20.11.2026. | 18:48–18:50 | 0 h 02 min | Ispis plana za vozača (A4 / PDF) |
 | 20.11.2026. | 18:50–18:53 | 0 h 03 min | Uvoz i izvoz (JSON, CSV), link za dijeljenje, testovi, dokumentacija |
-| | | **0 h 10 min** | |
+| 20.11.2026. | 20:57–21:02 | 0 h 05 min | Push, deploy i provjera na live stranici |
+| 20.11.2026. | 21:09–21:17 | 0 h 08 min | Rute po cestama (OSRM), bolja pretraga adresa, „Otvori u Google kartama”, CSV predlošci i uvoz vozila i lokacija |
+| | | **0 h 23 min** | |
 
-**Ukupno (faze 1–3): ≈ 2 h 36 min**
+**Ukupno (faze 1–3): ≈ 2 h 49 min**
 
 ## Napomena
 

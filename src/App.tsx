@@ -6,6 +6,7 @@ import { Results } from './components/Results'
 import { SettingsPanel } from './components/SettingsPanel'
 import { cloneDefaultInput, emptyInput, isEmptyInput } from './data/defaultData'
 import { clearAll } from './data/edit'
+import { fetchRoadMatrix } from './data/routing'
 import { ImportError, decodeShare, shareTokenFromHash } from './data/io'
 import { InputError, solve, validatePlan, type Plan, type ProblemInput } from './solver'
 
@@ -13,17 +14,48 @@ import { InputError, solve, validatePlan, type Plan, type ProblemInput } from '.
 const GeoEditor = lazy(() => import('./components/GeoEditor'))
 
 export type Result =
-  | { kind: 'ok'; plan: Plan; violations: string[]; input: ProblemInput }
+  | {
+      kind: 'ok'
+      plan: Plan
+      violations: string[]
+      /** what was solved (incl. road distances) */
+      input: ProblemInput
+      /** the editor state it was solved from (for the "data changed" hint) */
+      source: ProblemInput
+      /** e.g. road distances unavailable -> air distance used */
+      notice?: string
+    }
   | { kind: 'error'; problems: string[] }
   | { kind: 'none' }
 
-function run(input: ProblemInput): Result {
+function run(input: ProblemInput, source: ProblemInput = input, notice?: string): Result {
   try {
     const plan = solve(input)
-    return { kind: 'ok', plan, violations: validatePlan(input, plan), input }
+    return { kind: 'ok', plan, violations: validatePlan(input, plan), input, source, notice }
   } catch (e) {
     if (e instanceof InputError) return { kind: 'error', problems: e.problems }
     return { kind: 'error', problems: [String(e)] }
+  }
+}
+
+/**
+ * In real-map mode with road distances, fetch the driving-distance matrix (OSRM) first;
+ * if the service is unavailable, solve with air distance x factor and say so.
+ */
+async function solveWithRoads(input: ProblemInput): Promise<Result> {
+  const wantsRoads = input.coordinateMode === 'geo' && input.settings.distanceSource === 'road'
+  const located = input.locations.filter((l) => Number.isFinite(l.lat) && Number.isFinite(l.lon))
+  if (!wantsRoads || located.length < 2 || located.length !== input.locations.length) return run(input)
+  try {
+    const roadMatrix = await fetchRoadMatrix(input.locations)
+    return run({ ...input, roadMatrix }, input)
+  } catch (e) {
+    const why = e instanceof Error ? e.message : String(e)
+    return run(
+      input,
+      input,
+      `Cestovne udaljenosti trenutno nisu dostupne (${why}). Plan je izračunat sa zračnom udaljenosti × faktor ceste ${input.settings.roadFactor}.`,
+    )
   }
 }
 
@@ -39,7 +71,8 @@ export default function App() {
   const [drawerOpen, setDrawerOpen] = useState(() => !window.matchMedia(MOBILE).matches)
   const [confirmClear, setConfirmClear] = useState(false)
   const empty = isEmptyInput(input)
-  const stale = result.kind === 'ok' && result.input !== input
+  const stale = result.kind === 'ok' && result.source !== input
+  const [busy, setBusy] = useState(false)
 
   // Data shared by link (#d=...): load it once on start.
   const [shareNote, setShareNote] = useState<string | null>(null)
@@ -49,7 +82,7 @@ export default function App() {
     decodeShare(token)
       .then((shared) => {
         setInput(shared)
-        setResult(run(shared))
+        void solveWithRoads(shared).then(setResult)
         setShareNote(
           `Učitani su podaci iz linka: ${shared.trucks.length} vozila, ${shared.locations.length} lokacija, ${shared.orders.length} naloga.`,
         )
@@ -70,7 +103,10 @@ export default function App() {
     if (window.matchMedia(MOBILE).matches) setDrawerOpen(false)
   }
   const optimise = () => {
-    setResult(run(input))
+    setBusy(true)
+    void solveWithRoads(input)
+      .then(setResult)
+      .finally(() => setBusy(false))
     closeOnMobile()
   }
   const loadTask = () => {
@@ -197,8 +233,8 @@ export default function App() {
 
           <div className="drawer-bottom">
             {stale && <span className="stale">Podaci su promijenjeni. Pokreni optimizaciju ponovno.</span>}
-            <button className="btn-primary" onClick={optimise} disabled={empty}>
-              Optimiziraj raspored
+            <button className="btn-primary" onClick={optimise} disabled={empty || busy}>
+              {busy ? 'Računam rute…' : 'Optimiziraj raspored'}
             </button>
           </div>
         </aside>
@@ -251,9 +287,9 @@ export default function App() {
               result={result}
               stale={stale}
               onApplySettings={(settings) => {
-                const next = { ...result.input, settings }
+                const next = { ...result.source, settings }
                 setInput(next)
-                setResult(run(next))
+                void solveWithRoads(next).then(setResult)
               }}
             />
           )}

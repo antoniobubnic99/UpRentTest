@@ -69,10 +69,25 @@ export interface Settings {
   solverMode: SolverMode
   /** 'geo' mode only: straight-line distance is multiplied by this factor to approximate roads. */
   roadFactor: number
+  /**
+   * 'geo' mode only: 'road' = driving distances from a routing service (OSRM), supplied as
+   * ProblemInput.roadMatrix; 'air' = great-circle distance x roadFactor.
+   */
+  distanceSource: DistanceSource
+}
+
+export type DistanceSource = 'road' | 'air'
+
+/** Road distances between locations (km), fetched from a routing service before solving. */
+export interface RoadMatrix {
+  ids: string[]
+  km: number[][]
 }
 
 export interface ProblemInput {
   coordinateMode: CoordinateMode
+  /** 'geo' + distanceSource 'road': driving distances; without it air distance x factor is used. */
+  roadMatrix?: RoadMatrix
   baseId: string
   trucks: Truck[]
   machines: Machine[]
@@ -131,4 +146,6 @@ export interface Plan {
   solveMs: number
   /** Which algorithm produced the plan (decision D3). */
   solverUsed: 'exact' | 'heuristic'
+  /** How distances were measured: grid (task), road (OSRM) or air x factor. */
+  distanceUsed: 'xy' | 'road' | 'air'
 }

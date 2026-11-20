@@ -7,6 +7,8 @@ interface Props {
   settings: Settings
   selectedSeq?: number
   onPrint?: () => void
+  /** Google Maps directions links (real-map mode only) */
+  googleLinks?: string[]
 }
 
 const ACTION_LABEL = {
@@ -17,7 +19,7 @@ const ACTION_LABEL = {
   return: 'Povratak',
 } as const
 
-export function TruckResult({ plan, color, settings, selectedSeq, onPrint }: Props) {
+export function TruckResult({ plan, color, settings, selectedSeq, onPrint, googleLinks }: Props) {
   const { truck } = plan
   const limitOn = settings.timeLimitMode !== 'none'
   const overLimit = limitOn && plan.limitedHours > settings.maxHoursPerDay + 1e-9
@@ -30,11 +32,29 @@ export function TruckResult({ plan, color, settings, selectedSeq, onPrint }: Pro
         <span className="muted">
           {fmtKg(truck.capacityKg)} · max {truck.maxItems} stroja
         </span>
-        {onPrint && plan.ordersCompleted > 0 && (
-          <button className="btn-outline small print-btn" onClick={onPrint}>
-            Ispis za vozača
-          </button>
-        )}
+        <span className="truck-actions">
+          {googleLinks && googleLinks.length > 0 && plan.ordersCompleted > 0 && (
+            <span className="gmaps">
+              {googleLinks.map((url, i) => (
+                <a
+                  key={url}
+                  className="btn-outline small"
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Otvara rutu s redoslijedom stanica u Google kartama (nova kartica)"
+                >
+                  {googleLinks.length === 1 ? 'Otvori u Google kartama' : `Google karte ${i + 1}/${googleLinks.length}`}
+                </a>
+              ))}
+            </span>
+          )}
+          {onPrint && plan.ordersCompleted > 0 && (
+            <button className="btn-outline small" onClick={onPrint}>
+              Ispis za vozača
+            </button>
+          )}
+        </span>
       </div>
 
       <div className="kpis small">

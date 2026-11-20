@@ -1,9 +1,11 @@
-import type { CoordinateMode, Location } from './types'
+import type { CoordinateMode, Location, ProblemInput } from './types'
 
 export interface DistanceOptions {
   coordinateMode: CoordinateMode
   /** Multiplier applied to great-circle distance in 'geo' mode. */
   roadFactor: number
+  /** Road distances (km) by location id; used instead of the formula when present. */
+  matrix?: Map<string, Map<string, number>>
 }
 
 /** The task data: abstract grid in km, plain Euclidean distance. */
@@ -24,6 +26,8 @@ export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: numb
 /** Unrounded distance in km under the given mode. */
 export function rawKm(a: Location, b: Location, opts: DistanceOptions = XY_DISTANCE): number {
   if (opts.coordinateMode === 'geo') {
+    const road = opts.matrix?.get(a.id)?.get(b.id)
+    if (road !== undefined) return road
     return haversineKm(a.lat ?? NaN, a.lon ?? NaN, b.lat ?? NaN, b.lon ?? NaN) * opts.roadFactor
   }
   return Math.hypot((a.x ?? NaN) - (b.x ?? NaN), (a.y ?? NaN) - (b.y ?? NaN))
@@ -49,7 +53,19 @@ export function deciToKm(deci: number): number {
   return Math.round(deci) / 10
 }
 
+/** True when the instance should (and can) use road distances. */
+export function usesRoadMatrix(input: Pick<ProblemInput, 'coordinateMode' | 'roadMatrix'> & { settings: { distanceSource?: string } }): boolean {
+  return input.coordinateMode === 'geo' && input.settings.distanceSource === 'road' && !!input.roadMatrix
+}
+
 /** Distance options for a problem instance. */
-export function distanceOptions(input: { coordinateMode: CoordinateMode; settings: { roadFactor: number } }): DistanceOptions {
-  return { coordinateMode: input.coordinateMode, roadFactor: input.settings.roadFactor }
+export function distanceOptions(
+  input: Pick<ProblemInput, 'coordinateMode' | 'roadMatrix'> & { settings: { roadFactor: number; distanceSource?: string } },
+): DistanceOptions {
+  const opts: DistanceOptions = { coordinateMode: input.coordinateMode, roadFactor: input.settings.roadFactor }
+  if (usesRoadMatrix(input)) {
+    const { ids, km } = input.roadMatrix!
+    opts.matrix = new Map(ids.map((a, i) => [a, new Map(ids.map((b, j) => [b, km[i][j]]))]))
+  }
+  return opts
 }

@@ -1,4 +1,4 @@
-import { deciToKm } from './distance'
+import { deciToKm, usesRoadMatrix } from './distance'
 import { solveHeuristic } from './heuristic'
 import { buildTruckPlan, explainUnassigned, popcount, prepare, type Prepared } from './prepare'
 import { routeTime, withinLimit } from './time'
@@ -214,5 +214,6 @@ export function solve(input: ProblemInput): Plan {
     ordersCompleted: served,
     solveMs: performance.now() - t0,
     solverUsed,
+    distanceUsed: input.coordinateMode === 'xy' ? 'xy' : usesRoadMatrix(input) ? 'road' : 'air',
   }
 }

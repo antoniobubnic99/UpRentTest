@@ -58,7 +58,10 @@ export default function GeoEditor({ input, onChange }: Props) {
   }, [query, onlyHr, tooShort])
 
   const pick = (r: GeocodeResult) => {
-    onChange(addLocation(input, { name: r.name, lat: round(r.lat), lon: round(r.lon), address: r.address }))
+    // keep what the user typed (e.g. "Horvatova ulica 13") when OSM only knows the street
+    const name = r.houseNumberMissing ? query.trim() : r.name
+    const address = r.houseNumberMissing ? `${query.trim()} (približno: ${r.address})` : r.address
+    onChange(addLocation(input, { name, lat: round(r.lat), lon: round(r.lon), address }))
     setQuery('')
     setResults([])
     setStatus('idle')
@@ -73,7 +76,7 @@ export default function GeoEditor({ input, onChange }: Props) {
         <input
           className="cell-input text"
           type="search"
-          placeholder="Traži adresu ili mjesto (npr. Velika Gorica, Zagrebačka 1)"
+          placeholder="Adresa, mjesto ili koordinate / Google Maps link"
           aria-label="Traži adresu"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -94,7 +97,12 @@ export default function GeoEditor({ input, onChange }: Props) {
               <li key={`${r.lat},${r.lon},${r.address}`}>
                 <button onClick={() => pick(r)} title={r.address}>
                   <strong>{r.name}</strong>
-                  <small>{r.address}</small>
+                  <small>{r.fromCoordinates ? r.address : r.detail || r.address}</small>
+                  {r.houseNumberMissing && (
+                    <small className="warn-text">
+                      Kućni broj nije u OpenStreetMap podacima: marker će biti na ulici, povuci ga na točno mjesto.
+                    </small>
+                  )}
                 </button>
               </li>
             ))}
@@ -145,8 +153,9 @@ export default function GeoEditor({ input, onChange }: Props) {
         )}
       </MapContainer>
       <p className="hint">
-        Klik na kartu dodaje lokaciju, a marker se može povući mišem. Pretraga adresa: Nominatim / OpenStreetMap (najviše 1
-        upit u sekundi).
+        Klik na kartu dodaje lokaciju, a marker se može povući mišem. Pretraga: Nominatim / OpenStreetMap (najviše 1 upit u
+        sekundi). Kućni brojevi postoje samo gdje su upisani u OpenStreetMap; za točnu lokaciju zalijepi koordinate ili link
+        iz Google karata (desni klik na mjesto → kopiraj koordinate).
       </p>
     </div>
   )

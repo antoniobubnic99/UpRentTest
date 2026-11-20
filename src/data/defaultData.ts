@@ -10,6 +10,7 @@ export const defaultSettings: Settings = {
   breakMinutes: 30,
   solverMode: 'auto',
   roadFactor: 1.3,
+  distanceSource: 'road',
 }
 
 /** Input data exactly as given in the UP RENT task description. */

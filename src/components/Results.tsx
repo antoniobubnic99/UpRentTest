@@ -3,6 +3,7 @@ import type { Result } from '../App'
 import { truckColor } from '../colors'
 import { fmtKm } from '../format'
 import type { Settings } from '../solver'
+import { googleMapsRouteUrls } from '../data/googleMaps'
 import { DriverSheets } from './DriverSheets'
 import { RouteMap } from './RouteMap'
 import { ScenarioCompare } from './ScenarioCompare'
@@ -29,6 +30,13 @@ export function Results({ result, stale, onApplySettings }: Props) {
   const [printIds, setPrintIds] = useState<string[] | null>(null)
   const donePrinting = useCallback(() => setPrintIds(null), [])
   const machineWeight = useMemo(() => new Map(input.machines.map((m) => [m.id, m.weightKg])), [input])
+
+  const locById = useMemo(() => new Map(input.locations.map((l) => [l.id, l])), [input])
+  const stopsOf = (steps: { locationId: string }[]) =>
+    steps
+      .map((s) => locById.get(s.locationId))
+      .filter((l) => l && Number.isFinite(l.lat) && Number.isFinite(l.lon))
+      .map((l) => ({ lat: l!.lat!, lon: l!.lon! }))
 
   const toggle = (id: string) => {
     const next = new Set(hidden)
@@ -84,6 +92,8 @@ export function Results({ result, stale, onApplySettings }: Props) {
           <strong>{Math.max(1, Math.round(plan.solveMs))} ms</strong>
         </div>
       </div>
+
+      {result.notice && <div className="alert alert-warn">{result.notice}</div>}
 
       {plan.solverUsed === 'heuristic' && (
         <div className="alert alert-info">
@@ -187,6 +197,7 @@ export function Results({ result, stale, onApplySettings }: Props) {
             settings={input.settings}
             selectedSeq={selected?.truckId === tp.truck.id ? selected.seq : undefined}
             onPrint={() => setPrintIds([tp.truck.id])}
+            googleLinks={input.coordinateMode === 'geo' ? googleMapsRouteUrls(stopsOf(tp.steps)) : undefined}
           />
         ) : null,
       )}

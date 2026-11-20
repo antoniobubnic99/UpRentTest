@@ -1708,8 +1708,15 @@ p.empty-row {
   padding: 4px 10px;
   font-size: 12px;
 }
-.truck-head .print-btn {
+.truck-actions {
   margin-left: auto;
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.truck-actions a.btn-outline {
+  text-decoration: none;
+  display: inline-block;
 }
 .print-area {
   display: none;
@@ -1872,4 +1879,15 @@ p.empty-row {
 .data-io .hint {
   font-size: 12px;
   margin: 0;
+}
+
+.geo-results small.warn-text {
+  color: var(--red);
+  white-space: normal;
+}
+.io-msg.progress {
+  border-left: 4px solid var(--yellow);
+}
+.data-io-panel > .hint {
+  margin: 0 0 4px;
 }

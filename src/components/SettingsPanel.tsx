@@ -75,7 +75,7 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
             onChange={(e) => set('speedKmh', Number(e.target.value))}
           />
         </label>
-        {coordinateMode === 'geo' && (
+        {coordinateMode === 'geo' && settings.distanceSource === 'air' && (
           <label title="Zračna udaljenost × faktor ≈ udaljenost po cesti">
             Faktor ceste
             <input
@@ -127,6 +127,35 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
           </div>
           <p className="hint">{active.help}</p>
         </div>
+
+        {coordinateMode === 'geo' && (
+          <div className="mode">
+            <span className="mode-label">Udaljenosti na stvarnoj karti</span>
+            <div className="segmented" role="radiogroup" aria-label="Udaljenosti na stvarnoj karti">
+              {(
+                [
+                  ['road', 'Po cestama (OSRM)'],
+                  ['air', 'Zračna × faktor'],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={v}
+                  role="radio"
+                  aria-checked={settings.distanceSource === v}
+                  className={settings.distanceSource === v ? 'active' : ''}
+                  onClick={() => set('distanceSource', v)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <p className="hint">
+              {settings.distanceSource === 'road'
+                ? 'Stvarne udaljenosti vožnje po cestovnoj mreži (OpenStreetMap, OSRM). Ako servis nije dostupan, koristi se zračna udaljenost × faktor.'
+                : `Zračna udaljenost × ${settings.roadFactor}: radi bez interneta, ali je samo procjena.`}
+            </p>
+          </div>
+        )}
 
         <div className="mode">
           <span className="mode-label">Solver</span>

@@ -25,8 +25,15 @@ export class ImportError extends Error {
 
 // ---------- JSON ----------
 
+/** The data set without derived data (road distances are fetched again when solving). */
+export function stripDerived(input: ProblemInput): ProblemInput {
+  const { roadMatrix: _roadMatrix, ...rest } = input
+  void _roadMatrix
+  return rest
+}
+
 export function exportJson(input: ProblemInput): string {
-  return JSON.stringify({ format: FORMAT, version: VERSION, data: input }, null, 2)
+  return JSON.stringify({ format: FORMAT, version: VERSION, data: stripDerived(input) }, null, 2)
 }
 
 type Obj = Record<string, unknown>
@@ -101,6 +108,7 @@ export function inputFromUnknown(raw: unknown): ProblemInput {
     breakMinutes: pick('breakMinutes', (v) => num(v) !== undefined),
     solverMode: pick('solverMode', (v) => v === 'auto' || v === 'exact' || v === 'heuristic'),
     roadFactor: pick('roadFactor', (v) => num(v) !== undefined),
+    distanceSource: pick('distanceSource', (v) => v === 'road' || v === 'air'),
   }
 
   const baseId = str(root.baseId) ?? locations[0]?.id ?? ''
@@ -227,6 +235,153 @@ export function importOrdersCsv(input: ProblemInput, text: string): ProblemInput
   return { ...input, orders, machines }
 }
 
+// ---------- CSV (vehicles, locations) and templates ----------
+
+export const TRUCKS_HEADER = ['id', 'naziv', 'nosivost_kg', 'max_strojeva']
+export const LOCATIONS_HEADER = ['id', 'naziv', 'x_km', 'y_km', 'lat', 'lon', 'adresa', 'baza']
+
+function toCsv(header: string[], rows: (string | number | undefined)[][]): string {
+  return [header.join(';'), ...rows.map((r) => r.map(csvCell).join(';'))].join('\r\n') + '\r\n'
+}
+
+/** Reads a CSV with a header row; returns a getter per data row (with its line number). */
+function readTable(text: string, required: string[]): { line: number; get: (name: string) => string }[] {
+  const rows = parseCsv(text)
+  if (rows.length === 0) throw new ImportError(['CSV je prazan.'])
+  const header = rows[0].map((h) => h.trim().toLowerCase())
+  const missing = required.filter((r) => !header.includes(r))
+  if (missing.length) throw new ImportError([`CSV nema stupce: ${missing.join(', ')}. Preuzmi predložak za ispravno zaglavlje.`])
+  return rows.slice(1).map((r, i) => ({
+    line: i + 2,
+    get: (name: string) => {
+      const c = header.indexOf(name)
+      return c >= 0 ? (r[c] ?? '').trim() : ''
+    },
+  }))
+}
+
+export function exportTrucksCsv(input: ProblemInput): string {
+  return toCsv(
+    TRUCKS_HEADER,
+    input.trucks.map((t) => [t.id, t.name, t.capacityKg, t.maxItems]),
+  )
+}
+
+/** Replaces the vehicles. */
+export function importTrucksCsv(input: ProblemInput, text: string): ProblemInput {
+  const problems: string[] = []
+  const trucks: Truck[] = readTable(text, ['id', 'nosivost_kg', 'max_strojeva']).map(({ line, get }) => {
+    const id = get('id')
+    const capacityKg = parseNumber(get('nosivost_kg'))
+    const maxItems = parseNumber(get('max_strojeva'))
+    if (!id) problems.push(`Red ${line}: nedostaje oznaka vozila.`)
+    if (!(capacityKg > 0)) problems.push(`Red ${line}: nosivost mora biti broj veći od 0.`)
+    if (!(Number.isInteger(maxItems) && maxItems >= 1)) problems.push(`Red ${line}: max_strojeva mora biti cijeli broj ≥ 1.`)
+    return { id, name: get('naziv') || `Kamion ${id}`, capacityKg, maxItems }
+  })
+  const ids = trucks.map((t) => t.id)
+  const dup = ids.filter((id, i) => id && ids.indexOf(id) !== i)
+  if (dup.length) problems.push(`Oznake vozila se ponavljaju: ${[...new Set(dup)].join(', ')}.`)
+  if (trucks.length === 0) problems.push('CSV nema nijednog vozila.')
+  if (problems.length) throw new ImportError(problems)
+  return { ...input, trucks }
+}
+
+export function exportLocationsCsv(input: ProblemInput): string {
+  return toCsv(
+    LOCATIONS_HEADER,
+    input.locations.map((l) => [
+      l.id,
+      l.name,
+      l.x,
+      l.y,
+      l.lat,
+      l.lon,
+      l.address,
+      l.id === input.baseId ? 'da' : '',
+    ]),
+  )
+}
+
+const YES = new Set(['da', 'd', 'x', '1', 'yes', 'y', 'true'])
+
+/**
+ * Replaces the locations. The coordinate mode follows the file: x_km / y_km filled -> task
+ * grid; otherwise real map (lat / lon, or only an address that the app then geocodes).
+ * Returns the ids that still need geocoding. Orders must keep pointing at existing locations.
+ */
+export function importLocationsCsv(input: ProblemInput, text: string): { input: ProblemInput; toGeocode: string[] } {
+  const problems: string[] = []
+  const rows = readTable(text, ['id'])
+  const xy = rows.some((r) => r.get('x_km') !== '' || r.get('y_km') !== '')
+  const toGeocode: string[] = []
+  let baseId = ''
+  const locations: Location[] = rows.map(({ line, get }) => {
+    const id = get('id')
+    if (!id) problems.push(`Red ${line}: nedostaje oznaka lokacije.`)
+    const loc: Location = { id, name: get('naziv') || id }
+    if (YES.has(get('baza').toLowerCase())) {
+      if (baseId) problems.push(`Red ${line}: baza je već ${baseId}; označi samo jednu bazu.`)
+      else baseId = id
+    }
+    if (xy) {
+      loc.x = parseNumber(get('x_km'))
+      loc.y = parseNumber(get('y_km'))
+      if (!Number.isFinite(loc.x) || !Number.isFinite(loc.y)) problems.push(`Red ${line}: x_km i y_km moraju biti brojevi.`)
+    } else {
+      const lat = get('lat')
+      const lon = get('lon')
+      const address = get('adresa')
+      if (address) loc.address = address
+      if (lat !== '' || lon !== '') {
+        loc.lat = parseNumber(lat)
+        loc.lon = parseNumber(lon)
+        if (!(Math.abs(loc.lat) <= 90 && Math.abs(loc.lon) <= 180))
+          problems.push(`Red ${line}: lat mora biti između -90 i 90, a lon između -180 i 180.`)
+      } else if (address) {
+        loc.lat = NaN
+        loc.lon = NaN
+        toGeocode.push(id)
+      } else problems.push(`Red ${line}: upiši koordinate (x_km, y_km ili lat, lon) ili adresu.`)
+    }
+    return loc
+  })
+  const ids = locations.map((l) => l.id)
+  const dup = ids.filter((id, i) => id && ids.indexOf(id) !== i)
+  if (dup.length) problems.push(`Oznake lokacija se ponavljaju: ${[...new Set(dup)].join(', ')}.`)
+  if (locations.length === 0) problems.push('CSV nema nijedne lokacije.')
+  const known = new Set(ids)
+  const broken = input.orders.filter((o) => !known.has(o.pickupId) || !known.has(o.deliveryId)).map((o) => o.id)
+  if (broken.length)
+    problems.push(
+      `Nalozi ${broken.join(', ')} koriste lokacije kojih nema u CSV-u. Dodaj te lokacije ili najprije učitaj nove naloge.`,
+    )
+  if (problems.length) throw new ImportError(problems)
+  if (!baseId) baseId = known.has(input.baseId) ? input.baseId : ids[0]
+  return { input: { ...input, coordinateMode: xy ? 'xy' : 'geo', locations, baseId }, toGeocode }
+}
+
+export type CsvKind = 'trucks' | 'locations' | 'orders'
+
+/** Fill-in templates with the header and a few example rows (to be overwritten). */
+export function templateCsv(kind: CsvKind): string {
+  if (kind === 'trucks')
+    return toCsv(TRUCKS_HEADER, [
+      ['A', 'Kamion A', 3500, 2],
+      ['B', 'Kamion B', 10000, 3],
+    ])
+  if (kind === 'locations')
+    return toCsv(LOCATIONS_HEADER, [
+      ['L0', 'Baza', '', '', '', '', 'Industrijska ulica 24, Hrušćica', 'da'],
+      ['L1', 'Gradilište Ilica', '', '', '', '', 'Ilica 10, Zagreb', ''],
+      ['L2', 'Skladište Velika Gorica', '', '', 45.7125, 16.0758, '', ''],
+    ])
+  return toCsv(CSV_HEADER, [
+    ['N01', 'M01', 800, 'L0', 'L1', '', ''],
+    ['N02', 'M02', 2400, 'L1', 'L2', 45, ''],
+  ])
+}
+
 // ---------- share link ----------
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -248,7 +403,7 @@ async function pipe(bytes: Uint8Array, stream: CompressionStream | Decompression
 
 /** Compressed (deflate) data set for the URL fragment; "z." marks compression, "j." plain JSON. */
 export async function encodeShare(input: ProblemInput): Promise<string> {
-  const json = new TextEncoder().encode(JSON.stringify(input))
+  const json = new TextEncoder().encode(JSON.stringify(stripDerived(input)))
   if (typeof CompressionStream === 'undefined') return `j.${toBase64Url(json)}`
   return `z.${toBase64Url(await pipe(json, new CompressionStream('deflate-raw')))}`
 }

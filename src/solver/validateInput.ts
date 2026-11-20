@@ -87,6 +87,13 @@ export function checkInput(input: ProblemInput): string[] {
   if (!(s.handlingMinutes >= 0)) problems.push('Vrijeme utovara/istovara ne smije biti negativno.')
   if (!(s.maxHoursPerDay > 0)) problems.push('Dnevni limit mora biti veći od 0.')
   if (s.breakEnabled && !(s.breakMinutes >= 0)) problems.push('Trajanje pauze ne smije biti negativno.')
+  if (input.coordinateMode === 'geo' && s.distanceSource === 'road' && input.roadMatrix) {
+    const known = new Set(input.roadMatrix.ids)
+    const missing = input.locations.filter((l) => !known.has(l.id)).map((l) => l.id)
+    if (missing.length) problems.push(`Cestovne udaljenosti nisu učitane za lokacije: ${missing.join(', ')}.`)
+    if (input.roadMatrix.km.some((row) => row.some((v) => !Number.isFinite(v) || v < 0)))
+      problems.push('Servis za rute nije našao cestovni put između nekih lokacija.')
+  }
   if (input.coordinateMode === 'geo' && !(s.roadFactor >= 1))
     problems.push('Faktor ceste mora biti ≥ 1 (cesta nije kraća od zračne linije).')
 
