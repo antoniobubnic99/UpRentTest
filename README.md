@@ -2,7 +2,7 @@
 
 Prototip web-aplikacije koja raspoređuje transportne naloge radnih strojeva na kamione Up Renta i za svaki kamion određuje optimalan redoslijed preuzimanja i isporuka, uz najmanju ukupnu kilometražu.
 
-**Live demo:** _(link se dodaje nakon deploya)_
+**Live demo:** https://uprenttest.vercel.app/
 
 ![Rezultat optimizacije](docs/screenshots/02-rezultat.png)
 
