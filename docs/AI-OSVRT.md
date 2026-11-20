@@ -10,12 +10,14 @@
 
 ## Moja uloga
 
-- Definirao sam cilj, ograničenja i kriterije kvalitete, a odluke sam donosio sam:
+- Zadao sam cilj i kriterije: točnost iznad svega, rješenje koje mogu obraniti i izgled usklađen s Up Rentom.
+- AI je predložio pristup:
   - egzaktni solver umjesto heuristike
-  - tumačenje limita od 9 h
-  - stack: React + TS + Vercel, bez backenda
-- Pregledao sam međurezultate, tražio objašnjenja i usmjeravao dorade.
-- AI je radio implementaciju, a ja sam provjeravao rezultate na načine navedene u nastavku.
+  - tumačenje limita od 9 h kao ukupnog radnog vremena vozača
+  - stack React + TypeScript + Vercel, bez backenda
+
+  Prijedloge sam procijenio i prihvatio, jer tako uobičajeno pristupam projektima: prvo jasno definiram pretpostavke, zatim biram rješenje čiji se rezultat može provjeriti, a jednostavnu arhitekturu stavljam ispred složene.
+- Usmjeravao sam rad, provjeravao međurezultate i odlučivao o predaji, deployu i doradama.
 
 ## Kako su rezultati AI-ja provjereni
 
