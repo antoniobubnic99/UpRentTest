@@ -74,14 +74,38 @@ export interface Settings {
    * ProblemInput.roadMatrix; 'air' = great-circle distance x roadFactor.
    */
   distanceSource: DistanceSource
+  /**
+   * 'geo' + road distances only: how driving time is measured.
+   * - 'road' (default): per relation, from the routing service's travel time (e.g. a motorway
+   *   leg is faster than a town leg), but never faster than truckMaxSpeedKmh
+   * - 'speed': distance / speedKmh (average speed, as in the task)
+   * In 'xy' mode (and without a road matrix) the average speed is always used.
+   */
+  travelTimeSource?: TravelTimeSource
+  /** Upper bound on the average speed of one relation for a truck (km/h); default 80. */
+  truckMaxSpeedKmh?: number
+  /**
+   * What to optimise after "most orders served":
+   * - 'km' (default): fewest total km
+   * - 'balanced': shortest longest working day (even workload) within balanceMaxExtraPct % of
+   *   the minimum km, then fewest km
+   */
+  objective?: Objective
+  /** 'balanced' only: how many % more km than the minimum may be spent on evening out the days (default 10). */
+  balanceMaxExtraPct?: number
 }
 
+export type Objective = 'km' | 'balanced'
+
 export type DistanceSource = 'road' | 'air'
+export type TravelTimeSource = 'road' | 'speed'
 
 /** Road distances between locations (km), fetched from a routing service before solving. */
 export interface RoadMatrix {
   ids: string[]
   km: number[][]
+  /** Driving time between locations (minutes) from the routing service (car profile). */
+  minutes?: number[][]
 }
 
 export interface ProblemInput {
@@ -116,6 +140,8 @@ export interface RouteStep {
   departureHours: number
   /** Same as departureHours; kept for the step table. */
   cumulativeHours: number
+  /** Driving time of the leg that leads to this step (hours); 0 for start and break. */
+  legHours: number
 }
 
 export interface TruckPlan {
@@ -148,4 +174,12 @@ export interface Plan {
   solverUsed: 'exact' | 'heuristic'
   /** How distances were measured: grid (task), road (OSRM) or air x factor. */
   distanceUsed: 'xy' | 'road' | 'air'
+  /** How driving time was measured: average speed, or per relation from the road service. */
+  timeUsed: 'speed' | 'road'
+  /**
+   * Exact solver with per-relation times only: number of (truck, order subset) pairs whose
+   * shortest route broke the daily limit while a slower-in-km but faster route fitted; the
+   * fastest route was used for them, so the optimum is not proven. 0 = proven optimal.
+   */
+  timeFallbacks: number
 }

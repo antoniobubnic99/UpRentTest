@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import type { ProblemInput } from './types'
 
 /** Above this many orders the exact solver is too slow; 'auto' switches to the heuristic (D3). */
@@ -29,73 +30,78 @@ export function checkInput(input: ProblemInput): string[] {
   const locIds = new Set(input.locations.map((l) => l.id))
   const machineIds = new Set(input.machines.map((m) => m.id))
 
-  for (const [label, ids] of [
-    ['lokacija', input.locations.map((l) => l.id)],
-    ['strojeva', input.machines.map((m) => m.id)],
-    ['naloga', input.orders.map((o) => o.id)],
-    ['kamiona', input.trucks.map((t) => t.id)],
+  for (const [key, ids] of [
+    ['in.dupLocations', input.locations.map((l) => l.id)],
+    ['in.dupMachines', input.machines.map((m) => m.id)],
+    ['in.dupOrders', input.orders.map((o) => o.id)],
+    ['in.dupTrucks', input.trucks.map((t) => t.id)],
   ] as const) {
     const dup = duplicates([...ids])
-    if (dup.length) problems.push(`Duplicirane oznake ${label}: ${dup.join(', ')}`)
+    if (dup.length) problems.push(tr(key, { ids: dup.join(', ') }))
   }
 
-  if (input.locations.length === 0) problems.push('Nema nijedne lokacije.')
-  else if (!locIds.has(input.baseId)) problems.push(`Baza ${input.baseId || '(nije odabrana)'} ne postoji među lokacijama.`)
-  if (input.trucks.length === 0) problems.push('Nema nijednog kamiona.')
-  if (input.orders.length === 0) problems.push('Nema nijednog naloga.')
+  if (input.locations.length === 0) problems.push(tr('in.noLocations'))
+  else if (!locIds.has(input.baseId)) problems.push(tr('in.noBase', { id: input.baseId }))
+  if (input.trucks.length === 0) problems.push(tr('in.noTrucks'))
+  if (input.orders.length === 0) problems.push(tr('in.noOrders'))
 
   for (const t of input.trucks) {
-    if (!(t.capacityKg > 0)) problems.push(`${t.name}: nosivost mora biti veća od 0.`)
+    if (!(t.capacityKg > 0)) problems.push(tr('in.capacity', { name: t.name }))
     if (!Number.isInteger(t.maxItems) || t.maxItems < 1)
-      problems.push(`${t.name}: maksimalan broj strojeva mora biti cijeli broj ≥ 1.`)
+      problems.push(tr('in.maxItems', { name: t.name }))
   }
   for (const m of input.machines) {
-    if (!(m.weightKg > 0)) problems.push(`Stroj ${m.id}: težina mora biti veća od 0.`)
+    if (!(m.weightKg > 0)) problems.push(tr('in.weight', { id: m.id }))
   }
   for (const l of input.locations) {
     if (input.coordinateMode === 'geo') {
       const latOk = Number.isFinite(l.lat) && Math.abs(l.lat!) <= 90
       const lonOk = Number.isFinite(l.lon) && Math.abs(l.lon!) <= 180
       if (!latOk || !lonOk)
-        problems.push(`Lokacija ${l.id}: geografska širina mora biti između -90 i 90, a dužina između -180 i 180.`)
+        problems.push(tr('in.latLon', { id: l.id }))
     } else if (!Number.isFinite(l.x) || !Number.isFinite(l.y)) {
-      problems.push(`Lokacija ${l.id}: koordinate moraju biti brojevi.`)
+      problems.push(tr('in.xy', { id: l.id }))
     }
   }
 
   const usedMachines = new Set<string>()
   for (const o of input.orders) {
-    if (!machineIds.has(o.machineId)) problems.push(`Nalog ${o.id}: stroj ${o.machineId} ne postoji.`)
-    if (!locIds.has(o.pickupId)) problems.push(`Nalog ${o.id}: lokacija preuzimanja ${o.pickupId} ne postoji.`)
-    if (!locIds.has(o.deliveryId)) problems.push(`Nalog ${o.id}: lokacija isporuke ${o.deliveryId} ne postoji.`)
+    if (!machineIds.has(o.machineId)) problems.push(tr('in.orderMachine', { id: o.id, machine: o.machineId }))
+    if (!locIds.has(o.pickupId)) problems.push(tr('in.orderPickup', { id: o.id, loc: o.pickupId }))
+    if (!locIds.has(o.deliveryId)) problems.push(tr('in.orderDelivery', { id: o.id, loc: o.deliveryId }))
     if (o.pickupId === o.deliveryId)
-      problems.push(`Nalog ${o.id}: preuzimanje i isporuka su na istoj lokaciji (${o.pickupId}).`)
-    for (const [label, v] of [
-      ['utovara', o.pickupMinutes],
-      ['istovara', o.deliveryMinutes],
+      problems.push(tr('in.orderSame', { id: o.id, loc: o.pickupId }))
+    for (const [key, v] of [
+      ['in.orderPickupMin', o.pickupMinutes],
+      ['in.orderDeliveryMin', o.deliveryMinutes],
     ] as const) {
-      if (v !== undefined && !(Number.isFinite(v) && v >= 0))
-        problems.push(`Nalog ${o.id}: vrijeme ${label} mora biti broj ≥ 0 (ili prazno za zadanu vrijednost).`)
+      if (v !== undefined && !(Number.isFinite(v) && v >= 0)) problems.push(tr(key, { id: o.id }))
     }
     if (usedMachines.has(o.machineId))
-      problems.push(`Stroj ${o.machineId} se pojavljuje u više naloga.`)
+      problems.push(tr('in.machineTwice', { id: o.machineId }))
     usedMachines.add(o.machineId)
   }
 
   const s = input.settings
-  if (!(s.speedKmh > 0)) problems.push('Brzina mora biti veća od 0.')
-  if (!(s.handlingMinutes >= 0)) problems.push('Vrijeme utovara/istovara ne smije biti negativno.')
-  if (!(s.maxHoursPerDay > 0)) problems.push('Dnevni limit mora biti veći od 0.')
-  if (s.breakEnabled && !(s.breakMinutes >= 0)) problems.push('Trajanje pauze ne smije biti negativno.')
+  if (!(s.speedKmh > 0)) problems.push(tr('in.speed'))
+  if (!(s.handlingMinutes >= 0)) problems.push(tr('in.handling'))
+  if (!(s.maxHoursPerDay > 0)) problems.push(tr('in.limit'))
+  if (s.breakEnabled && !(s.breakMinutes >= 0)) problems.push(tr('in.break'))
   if (input.coordinateMode === 'geo' && s.distanceSource === 'road' && input.roadMatrix) {
     const known = new Set(input.roadMatrix.ids)
     const missing = input.locations.filter((l) => !known.has(l.id)).map((l) => l.id)
-    if (missing.length) problems.push(`Cestovne udaljenosti nisu učitane za lokacije: ${missing.join(', ')}.`)
+    if (missing.length) problems.push(tr('in.roadMissing', { ids: missing.join(', ') }))
     if (input.roadMatrix.km.some((row) => row.some((v) => !Number.isFinite(v) || v < 0)))
-      problems.push('Servis za rute nije našao cestovni put između nekih lokacija.')
+      problems.push(tr('in.roadNoPath'))
+    if (input.roadMatrix.minutes?.some((row) => row.some((v) => !Number.isFinite(v) || v < 0)))
+      problems.push(tr('in.roadNoTime'))
   }
+  if (s.balanceMaxExtraPct !== undefined && !(s.balanceMaxExtraPct >= 0))
+    problems.push(tr('in.balancePct'))
+  if (s.truckMaxSpeedKmh !== undefined && !(s.truckMaxSpeedKmh > 0))
+    problems.push(tr('in.truckMax'))
   if (input.coordinateMode === 'geo' && !(s.roadFactor >= 1))
-    problems.push('Faktor ceste mora biti ≥ 1 (cesta nije kraća od zračne linije).')
+    problems.push(tr('in.roadFactor'))
 
   return problems
 }

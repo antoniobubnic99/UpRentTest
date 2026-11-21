@@ -176,7 +176,7 @@ Skup podataka je u jednom od dva načina, bez miješanja:
   - **po cestama (OSRM), zadano:** prije optimizacije aplikacija dohvaća matricu stvarnih udaljenosti vožnje između svih lokacija (OSRM table servis, OpenStreetMap cestovna mreža). Solver i validator koriste tu matricu, svaka dionica se zaokružuje na 0,1 km, a karta crta rute po cestama.
   - **zračna × faktor:** haversine (R = 6371,0088 km) × faktor ceste (zadano 1,3). Radi bez interneta i služi kao **rezerva**: ako servis za rute nije dostupan, aplikacija automatski koristi ovaj izračun i to javlja iznad rezultata.
 
-Solver se ne mijenja: radi nad matricom udaljenosti, bez obzira na njezin izvor. Vrijeme vožnje i dalje se računa kao km / prosječna brzina (60 km/h, pretpostavka iz zadatka), a ne iz OSRM trajanja. Tako je limit od 9 h usporediv s podacima iz zadatka.
+Solver se ne mijenja: radi nad matricom udaljenosti, bez obzira na njezin izvor. Vrijeme vožnje opisano je u 5.8: u koordinatnom sustavu iz zadatka to je km / 60 km/h, a na stvarnoj karti po cestama vrijeme svake relacije iz OSRM-a.
 
 Javni OSRM server namijenjen je laganom korištenju, pa se rezultati spremaju u cache. U produkciji bi to bio vlastiti OSRM ili komercijalni API (Google, HERE, Mapbox), s istim sučeljem prema solveru.
 
@@ -207,3 +207,47 @@ Za podatke iz zadatka:
 | Bez limita | 182,2 | – | Kamion B vozi svih 10 naloga, ali bi radio 9 h 42 min |
 | Limit 9 h | 200,1 | +17,9 km | N03 prelazi na kamion A |
 | Limit 9 h + pauza 30 min | 217,0 | +16,9 km | N01 i N04 prelaze na kamion A, a N03 se vraća na B |
+
+### 5.7 Ravnomjerna raspodjela (cilj optimizacije)
+
+Postavka *Cilj optimizacije* ima dvije vrijednosti:
+
+- **Najmanje km** (zadano, kao u zadatku): najviše izvršenih naloga, zatim najmanje ukupnih km.
+- **Ravnomjerna raspodjela:** najviše izvršenih naloga, zatim **što kraći najduži radni dan** (min-max), uz najviše **+X % km** u odnosu na plan s najmanje km (zadano X = 10). Među planovima s tim najkraćim najduljim danom bira se onaj s najmanje km.
+
+Bez granice km čisti min-max za podatke iz zadatka daje 284,2 km (+42 %), uz 339 i 345 min rada. To je skupo, pa je granica dio cilja, a ne naknadna provjera.
+
+**Egzaktni algoritam:**
+
+1. DP iz 3.1 daje najkraću rutu i njezino radno vrijeme za svaki (vozilo, podskup naloga).
+2. Konvolucija iz 3.2 daje najmanje km K* i najveći broj izvršenih naloga.
+3. Moguće duljine najduljeg dana su konačan skup: radna vremena svih (vozilo, podskup). Binarnom pretragom po tom skupu traži se najmanja vrijednost T za koju konvolucija, ograničena na podskupove s radnim vremenom ≤ T, daje isti broj naloga i km ≤ K* × (1 + X/100). Svojstvo je monotono (veći T, veći izbor), pa je pretraga ispravna.
+4. Plan je konvolucija s najmanje km uz taj T.
+
+Za podatke iz zadatka (X = 10 %): **217,0 km (+16,9 km)**, kamion A vozi N01 i N04 (122 min), kamion B ostalih osam naloga (495 min). Isti rezultat daje nezavisna Python provjera (`tools/reference_check.py`, potpuna pretraga svih podjela) i test koji rezultat uspoređuje s brute force pretragom na nasumičnim instancama.
+
+**Heuristika** (više od 12 naloga): nakon optimizacije po km slijedi drugi ruin & recreate koji planove rangira po najduljem danu (pa km) i odbacuje one iznad granice km, te završna faza premještanja i zamjene naloga s najopterećenijeg vozila.
+
+**Prijedlog u rezultatu:** kad je cilj *Najmanje km*, a neko vozilo radi manje od polovice najduljeg dana, aplikacija izračuna i ravnomjernu varijantu. Ako ona stvarno skraćuje najdulji dan, prikaže prijedlog („Kamion A je slabo iskorišten (77 min)…”) s gumbom za primjenu.
+
+### 5.8 Brzina po relaciji
+
+Jedna prosječna brzina ne opisuje stvarnost: autocesta je brža od gradske dionice. Zato na **stvarnoj karti s udaljenostima po cestama** vrijeme vožnje dolazi iz OSRM-a za svaku relaciju (postavka *Vrijeme vožnje: Po relaciji (OSRM)*, zadano):
+
+- vrijeme dionice = max(OSRM vrijeme, km / najveća brzina kamiona)
+- OSRM računa za osobni automobil, pa je brzina kamiona na relaciji ograničena na **80 km/h** (u HR ograničenje za kamione na autocesti; podesivo)
+- vremena se zaokružuju na cijele sekunde, pa solver, plan i validator rade s istim brojevima
+- brzina dionice (km / vrijeme) prikazana je u tablici rute i u oblačiću na vremenskoj liniji
+
+Primjer (OSRM, 21.11.2026.): Zagreb – Karlovac, centar – centar, 55,1 km za 48 min ≈ **69 km/h**.
+
+U **koordinatnom sustavu iz zadatka** nema cesta, pa se i dalje koristi prosječna brzina (60 km/h). Zato podaci iz zadatka i dalje daju 182,2 / 200,1 / 217,0 km. Ista prosječna brzina ostaje i kao rezerva ako OSRM ne vrati vremena, a može se odabrati i ručno (*Prosječna brzina*).
+
+**Utjecaj na egzaktnost.** S prosječnom brzinom vrijeme je proporcionalno km, pa je najkraća ruta podskupa ujedno i najbrža i DP ostaje egzaktan. S vremenom po relaciji to više ne vrijedi: dulja ruta može biti brža. Solver to rješava ovako:
+
+1. Za svaki podskup najprije provjerava najkraću rutu.
+2. Ako ona prelazi dnevni limit, drugi DP (isti, ali s vremenom kao težinom) daje najbržu rutu. Ako najbrža stane u dan, koristi se ona.
+3. Takvi slučajevi broje se u planu (`timeFallbacks`), a rezultat tada javlja da optimum po km nije dokazan. Plan je i dalje valjan prema validatoru.
+
+Za podskupove kod kojih najkraća ruta stane u dan rezultat ostaje dokazivo optimalan.
+

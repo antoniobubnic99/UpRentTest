@@ -9,6 +9,7 @@ import {
   removeTruck,
   setBase,
 } from '../data/edit'
+import { tr } from '../i18n'
 import type { ProblemInput } from '../solver'
 
 /**
@@ -35,11 +36,11 @@ export function ConfirmBar({ pending, onClose }: { pending: Pending; onClose: ()
       <span className="confirm-actions">
         {pending.onConfirm && (
           <button className="btn-danger" onClick={pending.onConfirm}>
-            {pending.confirmLabel ?? 'Obriši'}
+            {pending.confirmLabel ?? tr('common.delete')}
           </button>
         )}
         <button className="btn-link" onClick={onClose}>
-          {pending.onConfirm ? 'Odustani' : 'U redu'}
+          {pending.onConfirm ? tr('common.cancel') : tr('common.ok')}
         </button>
       </span>
     </div>
@@ -92,7 +93,7 @@ function MinutesCell({
       step={5}
       aria-label={label}
       placeholder={String(fallback)}
-      title={custom ? `Posebno vrijeme (zadano je ${fallback} min)` : `Zadano: ${fallback} min`}
+      title={custom ? tr('tbl.customTime', { min: fallback }) : tr('tbl.defaultTime', { min: fallback })}
       value={value ?? ''}
       onChange={(e) => onChange(e.target.value === '' ? undefined : Number(e.target.value))}
     />
@@ -159,9 +160,9 @@ export function TrucksPanel(props: PanelProps) {
       <table className="edit-table">
         <thead>
           <tr>
-            <th>Vozilo</th>
-            <th className="r">Nosivost (kg)</th>
-            <th className="r">Max strojeva</th>
+            <th>{tr('tbl.vehicle')}</th>
+            <th className="r">{tr('tbl.capacityKg')}</th>
+            <th className="r">{tr('tbl.maxMachines')}</th>
             <th />
           </tr>
         </thead>
@@ -169,11 +170,11 @@ export function TrucksPanel(props: PanelProps) {
           {input.trucks.map((t, i) => (
             <tr key={t.id}>
               <td>
-                <TextCell label={`Naziv vozila ${t.id}`} value={t.name} onChange={(v) => edit((d) => void (d.trucks[i].name = v))} />
+                <TextCell label={tr('tbl.vehicleNameAria', { id: t.id })} value={t.name} onChange={(v) => edit((d) => void (d.trucks[i].name = v))} />
               </td>
               <td className="r">
                 <NumberCell
-                  label={`Nosivost ${t.name} (kg)`}
+                  label={`${tr('tbl.capacityKg')} · ${t.name}`}
                   step={100}
                   value={t.capacityKg}
                   className="wide"
@@ -182,24 +183,24 @@ export function TrucksPanel(props: PanelProps) {
               </td>
               <td className="r">
                 <NumberCell
-                  label={`Max strojeva ${t.name}`}
+                  label={`${tr('tbl.maxMachines')} · ${t.name}`}
                   value={t.maxItems}
                   onChange={(v) => edit((d) => void (d.trucks[i].maxItems = v))}
                 />
               </td>
               <td className="r">
-                <RemoveButton title={`Ukloni ${t.name}`} onClick={() => apply(removeTruck(input, t.id))} />
+                <RemoveButton title={tr('tbl.remove', { name: t.name })} onClick={() => apply(removeTruck(input, t.id))} />
               </td>
             </tr>
           ))}
         </tbody>
       </table>
-      {input.trucks.length === 0 && <EmptyNote>Nema vozila.</EmptyNote>}
+      {input.trucks.length === 0 && <EmptyNote>{tr('tbl.noVehicles')}</EmptyNote>}
       <div className="row-actions">
         <button className="btn-secondary" onClick={() => apply(addTruck(input))}>
-          + Dodaj vozilo
+          + {tr('tbl.addVehicle')}
         </button>
-        {input.baseId && <span className="hint">Sva vozila polaze iz baze {input.baseId} i vraćaju se u nju.</span>}
+        {input.baseId && <span className="hint">{tr('tbl.allFromBase', { base: input.baseId })}</span>}
       </div>
     </div>
   )
@@ -217,7 +218,7 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
     else
       setPending({
         message: r.message,
-        confirmLabel: 'Obriši lokaciju i naloge',
+        confirmLabel: tr('tbl.deleteLocationAndOrders'),
         onConfirm: () => {
           const forced = removeLocation(input, id, true)
           if (forced.status === 'removed') apply(forced.input)
@@ -233,10 +234,10 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
         <thead>
           <tr>
             <th>ID</th>
-            <th>Naziv</th>
-            <th className="r">{geo ? 'Širina' : 'X (km)'}</th>
-            <th className="r">{geo ? 'Dužina' : 'Y (km)'}</th>
-            <th className="c">Baza</th>
+            <th>{tr('tbl.name')}</th>
+            <th className="r">{geo ? tr('tbl.lat') : 'X (km)'}</th>
+            <th className="r">{geo ? tr('tbl.lon') : 'Y (km)'}</th>
+            <th className="c">{tr('data.base')}</th>
             <th />
           </tr>
         </thead>
@@ -248,7 +249,7 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
               </td>
               <td>
                 <TextCell
-                  label={`Naziv lokacije ${l.id}`}
+                  label={tr('tbl.locationNameAria', { id: l.id })}
                   value={l.name}
                   onChange={(v) => edit((d) => void (d.locations[i].name = v))}
                 />
@@ -262,7 +263,7 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
                 <>
                   <td className="r">
                     <NumberCell
-                      label={`Geografska širina ${l.id}`}
+                      label={`${tr('tbl.lat')} ${l.id}`}
                       step={0.0001}
                       value={l.lat ?? NaN}
                       className="coord"
@@ -271,7 +272,7 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
                   </td>
                   <td className="r">
                     <NumberCell
-                      label={`Geografska dužina ${l.id}`}
+                      label={`${tr('tbl.lon')} ${l.id}`}
                       step={0.0001}
                       value={l.lon ?? NaN}
                       className="coord"
@@ -293,13 +294,13 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
                 <input
                   type="radio"
                   name="base"
-                  aria-label={`${l.id} je baza`}
+                  aria-label={tr('tbl.isBase', { id: l.id })}
                   checked={l.id === input.baseId}
                   onChange={() => apply(setBase(input, l.id))}
                 />
               </td>
               <td className="r">
-                <RemoveButton title={`Ukloni lokaciju ${l.id}`} onClick={() => askRemoveLocation(l.id)} />
+                <RemoveButton title={tr('tbl.removeLocation', { id: l.id })} onClick={() => askRemoveLocation(l.id)} />
               </td>
             </tr>
           ))}
@@ -307,8 +308,8 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
       </table>
       {input.locations.length === 0 && (
         <EmptyNote>
-          Nema lokacija. Prva dodana lokacija postaje baza.
-          {geo && ' Klikni na kartu ili potraži adresu.'}
+          {tr('tbl.noLocations')}
+          {geo && ` ${tr('tbl.noLocationsGeo')}`}
         </EmptyNote>
       )}
       <div className="row-actions">
@@ -316,56 +317,67 @@ export function LocationsPanel(props: PanelProps & { geoExtras?: ReactNode }) {
           className="btn-secondary"
           onClick={() => apply(geo ? addLocation(input, { lat: 45.815, lon: 15.982 }) : addLocation(input))}
         >
-          + Dodaj lokaciju
+          + {tr('tbl.addLocation')}
         </button>
-        {geo && <span className="hint">Bez karte nova lokacija dobiva koordinate središta Zagreba.</span>}
+        {geo && <span className="hint">{tr('tbl.newLocationHint')}</span>}
       </div>
     </div>
   )
 }
 
-export function OrdersPanel(props: PanelProps) {
-  const { input } = props
+/** Orders flagged in the result (unassigned / input problems): id -> reason. */
+export type Flags = Map<string, string>
+
+export function OrdersPanel(props: PanelProps & { flags?: Flags }) {
+  const { input, flags } = props
   const { edit, apply } = useEdit(props)
   const orderBlock = cannotAddOrderReason(input)
-  const locOptions = input.locations.map((l) => ({
-    value: l.id,
-    label: l.name && l.name !== l.id ? `${l.id} · ${l.name}` : l.id,
-  }))
+  const label = (id: string) => {
+    const l = input.locations.find((x) => x.id === id)
+    return l && l.name && l.name !== l.id ? `${l.id} · ${l.name}` : id
+  }
+  // Pickup and delivery must differ: the location chosen on one side is not offered on the other.
+  const optionsWithout = (exclude: string, keep: string) =>
+    input.locations
+      .filter((l) => l.id !== exclude || l.id === keep)
+      .map((l) => ({ value: l.id, label: label(l.id) }))
   const fallback = input.settings.handlingMinutes
+  const flaggedCount = flags ? input.orders.filter((o) => flags.has(o.id)).length : 0
 
   return (
     <div className="panel">
+      {flaggedCount > 0 && <p className="flag-note">{tr('tbl.flaggedNote', { n: flaggedCount })}</p>}
       <div className="orders">
         {input.orders.map((o, i) => {
           const mi = input.machines.findIndex((m) => m.id === o.machineId)
+          const reason = flags?.get(o.id)
           return (
-            <div className="order-item" key={o.id}>
+            <div className={`order-item${reason ? ' flagged' : ''}`} key={o.id} id={`order-${o.id}`}>
               <div className="order-head">
                 <strong>{o.id}</strong>
                 <SelectCell
-                  label={`Preuzimanje ${o.id}`}
+                  label={tr('tbl.pickupAria', { id: o.id })}
                   value={o.pickupId}
-                  options={locOptions}
+                  options={optionsWithout(o.deliveryId, o.pickupId === o.deliveryId ? o.pickupId : '')}
                   onChange={(v) => edit((d) => void (d.orders[i].pickupId = v))}
                 />
                 <span className="arrow" aria-hidden>
                   →
                 </span>
                 <SelectCell
-                  label={`Isporuka ${o.id}`}
+                  label={tr('tbl.deliveryAria', { id: o.id })}
                   value={o.deliveryId}
-                  options={locOptions}
+                  options={optionsWithout(o.pickupId, o.pickupId === o.deliveryId ? o.deliveryId : '')}
                   onChange={(v) => edit((d) => void (d.orders[i].deliveryId = v))}
                 />
-                <RemoveButton title={`Ukloni nalog ${o.id}`} onClick={() => apply(removeOrder(input, o.id))} />
+                <RemoveButton title={tr('tbl.removeOrder', { id: o.id })} onClick={() => apply(removeOrder(input, o.id))} />
               </div>
               <div className="order-meta">
                 <label>
-                  <span>Stroj {o.machineId} (kg)</span>
+                  <span>{tr('tbl.machineKg', { id: o.machineId })}</span>
                   {mi >= 0 && (
                     <NumberCell
-                      label={`Težina stroja ${o.machineId} (kg)`}
+                      label={tr('tbl.machineKg', { id: o.machineId })}
                       step={100}
                       className="wide"
                       value={input.machines[mi].weightKg}
@@ -374,36 +386,39 @@ export function OrdersPanel(props: PanelProps) {
                   )}
                 </label>
                 <label>
-                  <span>Utovar (min)</span>
+                  <span>{tr('tbl.loadingMin')}</span>
                   <MinutesCell
-                    label={`Utovar ${o.id} (min)`}
+                    label={`${tr('tbl.loadingMin')} ${o.id}`}
                     value={o.pickupMinutes}
                     fallback={fallback}
                     onChange={(v) => edit((d) => void (d.orders[i].pickupMinutes = v))}
                   />
                 </label>
                 <label>
-                  <span>Istovar (min)</span>
+                  <span>{tr('tbl.unloadingMin')}</span>
                   <MinutesCell
-                    label={`Istovar ${o.id} (min)`}
+                    label={`${tr('tbl.unloadingMin')} ${o.id}`}
                     value={o.deliveryMinutes}
                     fallback={fallback}
                     onChange={(v) => edit((d) => void (d.orders[i].deliveryMinutes = v))}
                   />
                 </label>
               </div>
+              {reason && (
+                <p className="flag-reason" role="note">
+                  ⚠ {reason}
+                </p>
+              )}
             </div>
           )
         })}
       </div>
-      {input.orders.length === 0 && <EmptyNote>Nema naloga.</EmptyNote>}
+      {input.orders.length === 0 && <EmptyNote>{tr('tbl.noOrders')}</EmptyNote>}
       <div className="row-actions">
         <button className="btn-secondary" disabled={orderBlock !== null} onClick={() => apply(addOrder(input))}>
-          + Dodaj nalog
+          + {tr('tbl.addOrder')}
         </button>
-        <span className="hint">
-          {orderBlock ?? `Utovar/istovar: prazno = zadano (${fallback} min); veći teret može imati duže vrijeme.`}
-        </span>
+        <span className="hint">{orderBlock ?? tr('tbl.handlingHint', { min: fallback })}</span>
       </div>
     </div>
   )

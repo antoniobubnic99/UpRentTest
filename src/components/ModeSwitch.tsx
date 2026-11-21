@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { geoExampleInput } from '../data/defaultData'
 import { switchCoordinateMode } from '../data/edit'
+import { tr } from '../i18n'
 import type { CoordinateMode, ProblemInput } from '../solver'
 import { ConfirmBar } from './InputTables'
 
@@ -9,15 +10,14 @@ interface Props {
   onChange: (next: ProblemInput) => void
 }
 
-const OPTIONS: { value: CoordinateMode; label: string }[] = [
-  { value: 'xy', label: 'Koordinatni sustav (zadatak)' },
-  { value: 'geo', label: 'Stvarna karta' },
-]
-
 /** Switch between the task's grid and real map positions (F7); asks before data is lost. */
 export function ModeSwitch({ input, onChange }: Props) {
   const [pending, setPending] = useState<CoordinateMode | null>(null)
   const willLose = input.locations.length + input.orders.length > 0
+  const options: { value: CoordinateMode; label: string }[] = [
+    { value: 'xy', label: tr('mode.xyTask') },
+    { value: 'geo', label: tr('mode.geo') },
+  ]
 
   const choose = (mode: CoordinateMode) => {
     if (mode === input.coordinateMode) return
@@ -27,8 +27,8 @@ export function ModeSwitch({ input, onChange }: Props) {
 
   return (
     <div className="mode-switch">
-      <div className="segmented" role="radiogroup" aria-label="Način lokacija">
-        {OPTIONS.map((o) => (
+      <div className="segmented" role="radiogroup" aria-label={tr('mode.aria')}>
+        {options.map((o) => (
           <button
             key={o.value}
             role="radio"
@@ -42,14 +42,14 @@ export function ModeSwitch({ input, onChange }: Props) {
       </div>
       {input.coordinateMode === 'geo' && (
         <button className="btn-link" onClick={() => onChange(geoExampleInput())}>
-          Učitaj primjer: okolica Zagreba
+          {tr('mode.loadExample')}
         </button>
       )}
       {pending && (
         <ConfirmBar
           pending={{
-            message: `Promjena načina briše lokacije (${input.locations.length}) i naloge (${input.orders.length}), jer koordinate jednog načina ne vrijede u drugom. Vozila i postavke ostaju. Nastaviti?`,
-            confirmLabel: 'Promijeni i obriši',
+            message: tr('mode.confirm', { locations: input.locations.length, orders: input.orders.length }),
+            confirmLabel: tr('mode.confirmBtn'),
             onConfirm: () => {
               onChange(switchCoordinateMode(input, pending))
               setPending(null)

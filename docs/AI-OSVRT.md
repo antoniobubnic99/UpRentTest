@@ -82,7 +82,28 @@ Za cestovne rute, pretragu adresa i CSV predloške:
   - CSV predlošci se uvoze bez greške
   - uvoz u oba smjera za vozila i lokacije (koordinatni sustav i dalje daje 200,1 km)
 
-Ukupno je **176 testova**, a svi prolaze.
+Ukupno je tada bilo **176 testova**, a svi su prolazili.
+
+## Četvrta faza (21.11.2026.)
+
+Zahtjevi: četiri jezika, strelice za zatvaranje i proširenje ulaznih podataka, jedan CSV predložak, nova vremenska linija, brojevi na osima karte, isključivanje iste lokacije u nalogu, brzina po relaciji, žuto označavanje naloga s upozorenjem te ravnomjerna raspodjela posla. Provjera:
+
+1. **Ravnomjerna raspodjela.** Prvo je izmjeren čisti min-max: 284,2 km (+42 %), što je preskupo. Zato je cilj definiran s granicom km (zadano +10 %). Rezultat 217,0 km (A 122 min, B 495 min) odgovara primjeru iz zahtjeva i potvrđen je na tri načina:
+   - nezavisna Python provjera potpunom pretragom svih podjela (`tools/reference_check.py`)
+   - test usporedbe s brute force pretragom na nasumičnim instancama
+   - validator: plan poštuje sva pravila
+   
+   Mjerenje je otkrilo i slabost prve verzije heuristike (s granicom +10 % nije našla ništa bolje od 200,1 km), pa je dodan drugi ruin & recreate s rangiranjem po najduljem danu.
+2. **Brzina po relaciji.** OSRM je prvo pozvan izravno: Zagreb – Karlovac 55,1 km za 48 min (69 km/h). AI je u prvom nacrtu teksta pomoći napisao 56 km za 42 min; to je ispravljeno prema stvarnom odgovoru servisa, a isti odgovor je u testu. Test s ručno složenom matricom pokazuje slučaj kad najkraća ruta ne stane u dan, a najbrža stane, i da validator taj plan prihvaća.
+3. **Prijevodi.** TypeScript ne dopušta da u nekom jeziku nedostaje tekst ili parametar. Test dodatno provjerava da nijedan prijevod nije kopija hrvatskog i da poruke solvera prate odabrani jezik. Svi postojeći testovi i dalje provjeravaju hrvatske tekstove.
+4. **Jedan CSV.** Testovi: predložak, uvoz u oba smjera s rezultatom 200,1 km, datoteke spremljene na engleskom, francuskom i njemačkom, greške s brojem retka u datoteci.
+5. **Vizualna provjera (headless Chrome, hrvatski, engleski i njemački, mobitel 390 px).** Otkrila je i ispravljene su ove greške:
+   - prazan prostor iznad rezultata kad su ulazni podaci zatvoreni
+   - njemački naziv kartice „Einstellungen” prelazio je rub izbornika
+   - izbornik jezika na mobitelu prekrivao je naslov
+   - KPI „Ravnomjerna raspodjela” se rezao
+
+Ukupno je **201 test**, a svi prolaze.
 
 ## Zaključak
 

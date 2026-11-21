@@ -1,4 +1,4 @@
-import type { CoordinateMode, Location, ProblemInput } from './types'
+import type { CoordinateMode, Location, ProblemInput, Settings } from './types'
 
 export interface DistanceOptions {
   coordinateMode: CoordinateMode
@@ -6,7 +6,16 @@ export interface DistanceOptions {
   roadFactor: number
   /** Road distances (km) by location id; used instead of the formula when present. */
   matrix?: Map<string, Map<string, number>>
+  /** Road travel times (minutes) by location id; present only when per-relation times are used. */
+  minutes?: Map<string, Map<string, number>>
+  /** Upper bound on the average speed of one relation (km/h), used with `minutes`. */
+  truckMaxSpeedKmh?: number
+  /** Average speed (km/h) when per-relation times are not used. */
+  speedKmh?: number
 }
+
+/** Default upper bound on a truck's average speed on one relation (km/h). */
+export const DEFAULT_TRUCK_MAX_SPEED = 80
 
 /** The task data: abstract grid in km, plain Euclidean distance. */
 export const XY_DISTANCE: DistanceOptions = { coordinateMode: 'xy', roadFactor: 1 }
@@ -58,14 +67,62 @@ export function usesRoadMatrix(input: Pick<ProblemInput, 'coordinateMode' | 'roa
   return input.coordinateMode === 'geo' && input.settings.distanceSource === 'road' && !!input.roadMatrix
 }
 
+type TimeInput = Pick<ProblemInput, 'coordinateMode' | 'roadMatrix'> & {
+  settings: Pick<Settings, 'roadFactor'> & Partial<Pick<Settings, 'distanceSource' | 'travelTimeSource' | 'truckMaxSpeedKmh' | 'speedKmh'>>
+}
+
+/**
+ * True when driving time is taken per relation from the road service (travel time of each
+ * leg) instead of distance / average speed. Needs real-map mode with road distances and
+ * a matrix that carries travel times.
+ */
+export function usesLegTimes(input: TimeInput): boolean {
+  return (
+    usesRoadMatrix(input) &&
+    (input.settings.travelTimeSource ?? 'road') === 'road' &&
+    Array.isArray(input.roadMatrix!.minutes)
+  )
+}
+
+const toMap = (ids: string[], m: number[][]) =>
+  new Map(ids.map((a, i) => [a, new Map(ids.map((b, j) => [b, m[i][j]]))]))
+
 /** Distance options for a problem instance. */
-export function distanceOptions(
-  input: Pick<ProblemInput, 'coordinateMode' | 'roadMatrix'> & { settings: { roadFactor: number; distanceSource?: string } },
-): DistanceOptions {
-  const opts: DistanceOptions = { coordinateMode: input.coordinateMode, roadFactor: input.settings.roadFactor }
+export function distanceOptions(input: TimeInput): DistanceOptions {
+  const opts: DistanceOptions = {
+    coordinateMode: input.coordinateMode,
+    roadFactor: input.settings.roadFactor,
+    speedKmh: input.settings.speedKmh,
+  }
   if (usesRoadMatrix(input)) {
-    const { ids, km } = input.roadMatrix!
-    opts.matrix = new Map(ids.map((a, i) => [a, new Map(ids.map((b, j) => [b, km[i][j]]))]))
+    const { ids, km, minutes } = input.roadMatrix!
+    opts.matrix = toMap(ids, km)
+    if (usesLegTimes(input)) {
+      opts.minutes = toMap(ids, minutes!)
+      opts.truckMaxSpeedKmh = input.settings.truckMaxSpeedKmh ?? DEFAULT_TRUCK_MAX_SPEED
+    }
   }
   return opts
+}
+
+/**
+ * Driving time of one leg in whole seconds.
+ * - per relation: road travel time, but not faster than the truck's maximum average speed
+ *   (the routing service uses a car profile; a truck is limited to 80 km/h on motorways)
+ * - otherwise: rounded leg distance / average speed
+ * Whole seconds keep solver, plan and validator on exactly the same numbers.
+ */
+export function legSeconds(a: Location, b: Location, legKmRounded: number, opts: DistanceOptions): number {
+  if (a.id === b.id) return 0
+  const road = opts.minutes?.get(a.id)?.get(b.id)
+  if (road !== undefined) {
+    const vmax = opts.truckMaxSpeedKmh ?? DEFAULT_TRUCK_MAX_SPEED
+    return Math.round(Math.max(road * 60, (legKmRounded / vmax) * 3600))
+  }
+  return Math.round((legKmRounded / (opts.speedKmh ?? 60)) * 3600)
+}
+
+/** Average speed of a leg (km/h), or undefined for a zero-length or zero-time leg. */
+export function legSpeedKmh(km: number, hours: number): number | undefined {
+  return km > 0 && hours > 0 ? km / hours : undefined
 }

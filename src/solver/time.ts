@@ -15,13 +15,17 @@ export interface RouteTime {
 }
 
 /**
- * Working time of one route.
+ * Working time of one route driven at the average speed (km / speedKmh).
  * - 'drive+handling': drive + loading/unloading + break (if enabled and the truck has orders)
  * - 'drive': drive only (the break is not counted)
  * - 'none': nothing is limited
  */
 export function routeTime(km: number, handlingMinutes: number, hasOrders: boolean, s: Settings): RouteTime {
-  const driveHours = km / s.speedKmh
+  return routeTimeFromDrive(km / s.speedKmh, handlingMinutes, hasOrders, s)
+}
+
+/** Same as routeTime, for a known driving time (e.g. the sum of per-relation leg times). */
+export function routeTimeFromDrive(driveHours: number, handlingMinutes: number, hasOrders: boolean, s: Settings): RouteTime {
   const handlingHours = handlingMinutes / 60
   const breakHours = s.breakEnabled && hasOrders ? s.breakMinutes / 60 : 0
   const totalHours = driveHours + handlingHours + breakHours

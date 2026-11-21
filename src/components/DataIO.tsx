@@ -1,20 +1,9 @@
 import { useRef, useState } from 'react'
 import { moveLocation } from '../data/edit'
 import { geocode } from '../data/geocode'
-import {
-  ImportError,
-  exportJson,
-  exportLocationsCsv,
-  exportOrdersCsv,
-  exportTrucksCsv,
-  importJson,
-  importLocationsCsv,
-  importOrdersCsv,
-  importTrucksCsv,
-  shareUrl,
-  templateCsv,
-  type CsvKind,
-} from '../data/io'
+import { ImportError, exportAllCsv, exportJson, importAllCsv, importJson, shareUrl, templateAllCsv } from '../data/io'
+import { fmtNum } from '../format'
+import { tr } from '../i18n'
 import type { ProblemInput } from '../solver'
 
 interface Props {
@@ -34,25 +23,19 @@ function download(name: string, text: string, type: string) {
 }
 
 type Msg = { kind: 'ok' | 'error' | 'progress'; lines: string[] }
-type FileKind = CsvKind | 'json'
-
-const CSV_ROWS: { kind: CsvKind; label: string; file: string }[] = [
-  { kind: 'trucks', label: 'Vozila', file: 'vozila' },
-  { kind: 'locations', label: 'Lokacije', file: 'lokacije' },
-  { kind: 'orders', label: 'Nalozi', file: 'nalozi' },
-]
+type FileKind = 'csv' | 'json'
 
 const stamp = () => new Date().toISOString().slice(0, 10)
 
 /**
- * Import / export panel in the drawer: CSV templates and files for vehicles, locations and
- * orders (Excel), the whole data set as JSON, and a share link.
+ * Import / export panel in the drawer: one CSV (template, download, upload) with vehicles,
+ * locations and orders, the whole data set as JSON, and a share link.
  */
 export function DataIO({ input, onLoad }: Props) {
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState<Msg | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [pendingKind, setPendingKind] = useState<FileKind>('orders')
+  const [pendingKind, setPendingKind] = useState<FileKind>('csv')
   const empty = input.trucks.length + input.locations.length + input.orders.length === 0
 
   const pickFile = (kind: FileKind) => {
@@ -67,7 +50,7 @@ export function DataIO({ input, onLoad }: Props) {
     const notFound: string[] = []
     for (const [i, id] of ids.entries()) {
       const loc = next.locations.find((l) => l.id === id)!
-      setMsg({ kind: 'progress', lines: [`Tražim adrese ${i + 1}/${ids.length}: ${loc.address}`] })
+      setMsg({ kind: 'progress', lines: [tr('io.geocoding', { i: i + 1, n: ids.length, address: loc.address ?? '' })] })
       try {
         const [hit] = await geocode(loc.address ?? '', true)
         if (hit) next = moveLocation(next, id, Math.round(hit.lat * 1e5) / 1e5, Math.round(hit.lon * 1e5) / 1e5)
@@ -80,6 +63,9 @@ export function DataIO({ input, onLoad }: Props) {
     return notFound
   }
 
+  const summary = (next: ProblemInput) =>
+    tr('io.loaded', { trucks: next.trucks.length, locations: next.locations.length, orders: next.orders.length })
+
   const readFile = async (file: File | undefined) => {
     if (!file) return
     const kind = pendingKind
@@ -88,106 +74,85 @@ export function DataIO({ input, onLoad }: Props) {
       if (kind === 'json') {
         const next = importJson(text)
         onLoad(next)
-        setMsg({ kind: 'ok', lines: [`Učitano: ${next.trucks.length} vozila, ${next.locations.length} lokacija, ${next.orders.length} naloga.`] })
-      } else if (kind === 'trucks') {
-        const next = importTrucksCsv(input, text)
-        onLoad(next)
-        setMsg({ kind: 'ok', lines: [`Učitano ${next.trucks.length} vozila.`] })
-      } else if (kind === 'orders') {
-        const next = importOrdersCsv(input, text)
-        onLoad(next)
-        setMsg({ kind: 'ok', lines: [`Učitano ${next.orders.length} naloga.`] })
-      } else {
-        const { input: next, toGeocode } = importLocationsCsv(input, text)
-        onLoad(next)
-        const mode = next.coordinateMode === 'geo' ? 'stvarna karta' : 'koordinatni sustav'
-        if (toGeocode.length === 0) {
-          setMsg({ kind: 'ok', lines: [`Učitano ${next.locations.length} lokacija (${mode}), baza ${next.baseId}.`] })
-          return
-        }
-        const notFound = await geocodeAll(next, toGeocode)
-        setMsg({
-          kind: notFound.length ? 'error' : 'ok',
-          lines: [
-            `Učitano ${next.locations.length} lokacija (${mode}), baza ${next.baseId}; adrese pronađene: ${toGeocode.length - notFound.length}/${toGeocode.length}.`,
-            ...(notFound.length
-              ? [`Nije pronađeno: ${notFound.join('; ')}. Upiši koordinate ručno ili klikni lokaciju na karti.`]
-              : []),
-          ],
-        })
+        setMsg({ kind: 'ok', lines: [summary(next)] })
+        return
       }
+      const { input: next, toGeocode } = importAllCsv(input, text)
+      onLoad(next)
+      const mode = next.coordinateMode === 'geo' ? tr('mode.geo') : tr('mode.xy')
+      const head = `${summary(next)} ${tr('io.modeBase', { mode, base: next.baseId })}`
+      if (toGeocode.length === 0) {
+        setMsg({ kind: 'ok', lines: [head] })
+        return
+      }
+      const notFound = await geocodeAll(next, toGeocode)
+      setMsg({
+        kind: notFound.length ? 'error' : 'ok',
+        lines: [
+          `${head} ${tr('io.addressesFound', { found: toGeocode.length - notFound.length, n: toGeocode.length })}`,
+          ...(notFound.length ? [tr('io.notFound', { list: notFound.join('; ') })] : []),
+        ],
+      })
     } catch (e) {
       setMsg({ kind: 'error', lines: e instanceof ImportError ? e.problems : [String(e)] })
     }
   }
-
-  const exportCsv = (kind: CsvKind) =>
-    kind === 'trucks' ? exportTrucksCsv(input) : kind === 'locations' ? exportLocationsCsv(input) : exportOrdersCsv(input)
-  const hasData = (kind: CsvKind) =>
-    (kind === 'trucks' ? input.trucks : kind === 'locations' ? input.locations : input.orders).length > 0
 
   const copyLink = async () => {
     try {
       const url = await shareUrl(input, window.location.href)
       await navigator.clipboard.writeText(url)
       window.history.replaceState(null, '', url)
-      setMsg({
-        kind: 'ok',
-        lines: [
-          `Link je kopiran (${url.length.toLocaleString('hr-HR')} znakova). Podaci su u samom linku; ništa se ne šalje na server.`,
-        ],
-      })
+      setMsg({ kind: 'ok', lines: [tr('io.linkCopied', { n: fmtNum(url.length) })] })
     } catch (e) {
-      setMsg({ kind: 'error', lines: [`Link nije kopiran: ${e instanceof Error ? e.message : String(e)}`] })
+      setMsg({ kind: 'error', lines: [tr('io.linkFailed', { why: e instanceof Error ? e.message : String(e) })] })
     }
   }
 
   return (
     <div className="data-io">
       <button className="btn-link" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        {open ? '▾' : '▸'} Uvoz / izvoz / dijeljenje
+        {open ? '▾' : '▸'} {tr('io.title')}
       </button>
       {open && (
         <div className="data-io-panel">
-          <p className="hint">
-            Excel (CSV): preuzmi predložak, upiši podatke i učitaj ga. Redom: vozila, lokacije, nalozi. Lokacije mogu imati
-            samo adresu, a koordinate se onda traže automatski.
-          </p>
-          {CSV_ROWS.map(({ kind, label, file }) => (
-            <div className="data-io-row" key={kind}>
-              <span className="data-io-label">{label} (CSV)</span>
-              <button className="btn-outline small" onClick={() => download(`predlozak-${file}.csv`, templateCsv(kind), 'text/csv;charset=utf-8')}>
-                Predložak
-              </button>
-              <button
-                className="btn-outline small"
-                disabled={!hasData(kind)}
-                onClick={() => download(`uprent-${file}-${stamp()}.csv`, exportCsv(kind), 'text/csv;charset=utf-8')}
-              >
-                Preuzmi
-              </button>
-              <button className="btn-outline small" onClick={() => pickFile(kind)} aria-label={`Učitaj ${label.toLowerCase()} iz CSV-a`}>
-                Učitaj…
-              </button>
-            </div>
-          ))}
+          <p className="hint">{tr('io.csvHelp')}</p>
           <div className="data-io-row">
-            <span className="data-io-label">Cijeli skup (JSON)</span>
+            <span className="data-io-label">{tr('io.csvLabel')}</span>
+            <button
+              className="btn-outline small"
+              onClick={() => download(`${tr('io.fileTemplate')}.csv`, templateAllCsv(), 'text/csv;charset=utf-8')}
+            >
+              {tr('io.template')}
+            </button>
             <button
               className="btn-outline small"
               disabled={empty}
-              onClick={() => download(`uprent-podaci-${stamp()}.json`, exportJson(input), 'application/json')}
+              onClick={() => download(`uprent-${tr('io.fileData')}-${stamp()}.csv`, exportAllCsv(input), 'text/csv;charset=utf-8')}
             >
-              Preuzmi
+              {tr('io.download')}
             </button>
-            <button className="btn-outline small" onClick={() => pickFile('json')} aria-label="Učitaj cijeli skup iz JSON-a">
-              Učitaj…
+            <button className="btn-outline small" onClick={() => pickFile('csv')} aria-label={tr('io.uploadCsvAria')}>
+              {tr('io.upload')}
             </button>
           </div>
           <div className="data-io-row">
-            <span className="data-io-label">Link s podacima</span>
+            <span className="data-io-label">{tr('io.jsonLabel')}</span>
+            <button
+              className="btn-outline small"
+              disabled={empty}
+              onClick={() => download(`uprent-${tr('io.fileData')}-${stamp()}.json`, exportJson(input), 'application/json')}
+            >
+              {tr('io.download')}
+            </button>
+            <button className="btn-outline small" onClick={() => pickFile('json')} aria-label={tr('io.uploadJsonAria')}>
+              {tr('io.upload')}
+            </button>
+          </div>
+          <div className="data-io-row">
+            <span className="data-io-label">{tr('io.linkLabel')}</span>
             <button className="btn-outline small" disabled={empty} onClick={copyLink}>
-              Kopiraj link
+              {tr('io.copyLink')}
             </button>
           </div>
           <input
@@ -206,7 +171,7 @@ export function DataIO({ input, onLoad }: Props) {
               {msg.lines.slice(0, 6).map((l) => (
                 <div key={l}>{l}</div>
               ))}
-              {msg.lines.length > 6 && <div>… i još {msg.lines.length - 6}</div>}
+              {msg.lines.length > 6 && <div>{tr('io.more', { n: msg.lines.length - 6 })}</div>}
             </div>
           )}
         </div>

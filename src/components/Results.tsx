@@ -1,9 +1,11 @@
 import { Suspense, lazy, useCallback, useMemo, useState } from 'react'
 import type { Result } from '../App'
 import { truckColor } from '../colors'
-import { fmtKm } from '../format'
+import { fmtKm, fmtMin } from '../format'
+import { tr } from '../i18n'
 import type { Settings } from '../solver'
 import { googleMapsRouteUrls } from '../data/googleMaps'
+import { balanceSuggestion } from '../solver/scenarios'
 import { DriverSheets } from './DriverSheets'
 import { RouteMap } from './RouteMap'
 import { ScenarioCompare } from './ScenarioCompare'
@@ -17,9 +19,11 @@ interface Props {
   result: Extract<Result, { kind: 'ok' }>
   stale: boolean
   onApplySettings: (settings: Settings) => void
+  /** opens the order in the input panel (it is highlighted there) */
+  onShowOrder: (orderId: string) => void
 }
 
-export function Results({ result, stale, onApplySettings }: Props) {
+export function Results({ result, stale, onApplySettings, onShowOrder }: Props) {
   const { plan, input, violations } = result
   const [hidden, setHidden] = useState<Set<string>>(() => new Set())
   const [selected, setSelected] = useState<{ truckId: string; seq: number } | null>(null)
@@ -30,6 +34,13 @@ export function Results({ result, stale, onApplySettings }: Props) {
   const [printIds, setPrintIds] = useState<string[] | null>(null)
   const donePrinting = useCallback(() => setPrintIds(null), [])
   const machineWeight = useMemo(() => new Map(input.machines.map((m) => [m.id, m.weightKg])), [input])
+  const suggestion = useMemo(() => {
+    try {
+      return balanceSuggestion(input, plan)
+    } catch {
+      return null
+    }
+  }, [input, plan])
 
   const locById = useMemo(() => new Map(input.locations.map((l) => [l.id, l])), [input])
   const stopsOf = (steps: { locationId: string }[]) =>
@@ -50,45 +61,56 @@ export function Results({ result, stale, onApplySettings }: Props) {
       document.getElementById(`step-${truckId}-${seq}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
     )
   }
+  const balanced = (input.settings.objective ?? 'km') === 'balanced'
 
   return (
     <section className={stale ? 'is-stale' : ''}>
       <div className="section-head">
-        <h2>Rezultat</h2>
-        {stale && <span className="stale">Prikazan je rezultat za prethodne podatke.</span>}
+        <h2>{tr('res.title')}</h2>
+        {stale && <span className="stale">{tr('res.stale')}</span>}
       </div>
 
       <div className="kpis">
         <div className="kpi-main">
-          <span>Ukupna kilometraža</span>
+          <span>{tr('res.totalKm')}</span>
           <strong>{fmtKm(plan.totalKm)}</strong>
         </div>
         <div>
-          <span>Izvršeni nalozi</span>
+          <span>{tr('res.ordersDone')}</span>
           <strong>
             {plan.ordersCompleted} / {input.orders.length}
           </strong>
         </div>
         <div>
-          <span>Vozila u upotrebi</span>
+          <span>{tr('res.trucksUsed')}</span>
           <strong>
             {plan.trucks.filter((t) => t.ordersCompleted > 0).length} / {plan.trucks.length}
           </strong>
         </div>
         <div>
-          <span>Provjera ograničenja</span>
+          <span>{tr('res.check')}</span>
           <strong className={violations.length ? 'bad' : 'good'}>
-            {violations.length ? `${violations.length} kršenja` : 'Sve OK'}
+            {violations.length ? tr('res.violations', { n: violations.length }) : tr('res.allOk')}
           </strong>
         </div>
         <div>
-          <span>Solver</span>
-          <strong title={plan.solverUsed === 'exact' ? 'Dokazivo optimalan raspored' : 'Heuristika: bez jamstva optimuma'}>
-            {plan.solverUsed === 'exact' ? 'Egzaktni' : 'Heuristika'}
+          <span>{tr('res.solver')}</span>
+          <strong title={plan.solverUsed === 'exact' ? tr('res.exactTitle') : tr('res.heuristicTitle')}>
+            {plan.solverUsed === 'exact' ? tr('set.solverExactLabel') : tr('set.solverHeuristicLabel')}
           </strong>
         </div>
         <div>
-          <span>Vrijeme izračuna</span>
+          <span>{tr('res.goal')}</span>
+          <strong title={balanced ? tr('set.objectiveBalanced') : undefined}>{balanced ? tr('res.goalBalanced') : tr('set.objectiveKm')}</strong>
+        </div>
+        <div>
+          <span>{tr('res.driveTime')}</span>
+          <strong title={plan.timeUsed === 'road' ? tr('res.timeRoadTitle') : undefined}>
+            {plan.timeUsed === 'road' ? tr('res.timeRoad') : tr('res.timeSpeed', { v: input.settings.speedKmh })}
+          </strong>
+        </div>
+        <div>
+          <span>{tr('res.solveTime')}</span>
           <strong>{Math.max(1, Math.round(plan.solveMs))} ms</strong>
         </div>
       </div>
@@ -96,24 +118,23 @@ export function Results({ result, stale, onApplySettings }: Props) {
       {result.notice && <div className="alert alert-warn">{result.notice}</div>}
 
       {plan.solverUsed === 'heuristic' && (
-        <div className="alert alert-info">
-          Raspored je izračunala <strong>heuristika</strong> ({input.orders.length} naloga). Rezultat je valjan prema
-          svim pravilima, ali nema jamstva da je najkraći mogući. Za ≤ 12 naloga koristi se egzaktni solver.
-        </div>
+        <div className="alert alert-info">{tr('res.heuristicNote', { n: input.orders.length })}</div>
       )}
+
+      {plan.timeFallbacks > 0 && <div className="alert alert-info">{tr('res.timeFallbackNote')}</div>}
 
       {plan.unassigned.length > 0 && (
         <div className="alert alert-warn">
-          <strong>
-            Upozorenje: {plan.unassigned.length}{' '}
-            {plan.unassigned.length === 1 ? 'nalog nije moguće izvršiti' : 'naloga nije moguće izvršiti'}
-          </strong>
+          <strong>{tr('res.unassignedTitle', { n: plan.unassigned.length })}</strong>
           <ul>
             {plan.unassigned.map((u) => {
               const o = input.orders.find((x) => x.id === u.orderId)!
               return (
                 <li key={u.orderId}>
-                  <strong>{u.orderId}</strong> ({o.machineId}, {o.pickupId} → {o.deliveryId}): {u.reason}
+                  <strong>{u.orderId}</strong> ({o.machineId}, {o.pickupId} → {o.deliveryId}): {u.reason}{' '}
+                  <button className="btn-link" onClick={() => onShowOrder(u.orderId)}>
+                    {tr('res.showInInput')}
+                  </button>
                 </li>
               )
             })}
@@ -123,7 +144,7 @@ export function Results({ result, stale, onApplySettings }: Props) {
 
       {violations.length > 0 && (
         <div className="alert alert-error">
-          <strong>Validator je pronašao kršenja pravila:</strong>
+          <strong>{tr('res.validatorTitle')}</strong>
           <ul>
             {violations.map((v) => (
               <li key={v}>{v}</li>
@@ -132,23 +153,41 @@ export function Results({ result, stale, onApplySettings }: Props) {
         </div>
       )}
 
+      {suggestion && (
+        <div className="alert alert-info balance-hint">
+          <div>
+            <strong>{tr('res.idleTitle', { name: suggestion.idle.name, min: fmtMin(suggestion.idle.hours) })}</strong>{' '}
+            {tr('res.idleText', {
+              moves: suggestion.moves.map((m) => tr('res.idleMove', { truck: m.truck, ids: m.orderIds.join(', ') })).join('; '),
+              km: fmtKm(suggestion.plan.totalKm),
+              delta: fmtKm(suggestion.deltaKm),
+              times: suggestion.plan.trucks.map((t) => `${t.truck.name} ${fmtMin(t.totalHours)}`).join(', '),
+              pct: suggestion.settings.balanceMaxExtraPct ?? 10,
+            })}
+          </div>
+          <button className="btn-secondary small" onClick={() => onApplySettings(suggestion.settings)}>
+            {tr('res.applyBalanced')}
+          </button>
+        </div>
+      )}
+
       <div className="card assignment">
         <div className="assign-head">
-          <h3>Raspodjela naloga</h3>
-          <div className="filter" role="group" aria-label="Filter vozila">
+          <h3>{tr('res.assignment')}</h3>
+          <div className="filter" role="group" aria-label={tr('res.filterAria')}>
             <button
               className="btn-outline small"
               onClick={() => setPrintIds(plan.trucks.filter((t) => t.ordersCompleted > 0).map((t) => t.truck.id))}
               disabled={plan.ordersCompleted === 0}
             >
-              Ispis za vozače
+              {tr('res.printAll')}
             </button>
-            <span className="muted">Prikaži:</span>
+            <span className="muted">{tr('res.show')}</span>
             <button className="btn-link" onClick={() => setHidden(new Set())}>
-              Sva
+              {tr('res.all')}
             </button>
             <button className="btn-link" onClick={() => setHidden(new Set(plan.trucks.map((t) => t.truck.id)))}>
-              Nijedno
+              {tr('res.none')}
             </button>
           </div>
         </div>
@@ -158,10 +197,12 @@ export function Results({ result, stale, onApplySettings }: Props) {
               <label className="assign-truck">
                 <input type="checkbox" checked={visible.has(tp.truck.id)} onChange={() => toggle(tp.truck.id)} />
                 <span className="swatch" style={{ background: truckColor(i) }} /> {tp.truck.name}
-                <small className="muted">{fmtKm(tp.totalKm)}</small>
+                <small className="muted">
+                  {fmtKm(tp.totalKm)} · {fmtMin(tp.totalHours)}
+                </small>
               </label>
               <span className="chips">
-                {tp.orderIds.length === 0 && <span className="muted">bez naloga</span>}
+                {tp.orderIds.length === 0 && <span className="muted">{tr('res.noOrders')}</span>}
                 {tp.orderIds.map((id) => {
                   const o = input.orders.find((x) => x.id === id)!
                   return (
@@ -181,7 +222,7 @@ export function Results({ result, stale, onApplySettings }: Props) {
       <Timeline plan={plan} settings={input.settings} visible={visible} selected={selected} onSelect={select} />
 
       {input.coordinateMode === 'geo' ? (
-        <Suspense fallback={<div className="card">Učitavam kartu…</div>}>
+        <Suspense fallback={<div className="card">{tr('app.loadingMap')}</div>}>
           <GeoMap input={input} plan={plan} visible={visible} />
         </Suspense>
       ) : (

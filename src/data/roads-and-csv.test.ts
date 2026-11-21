@@ -83,7 +83,7 @@ describe('road distances (OSRM)', () => {
     const locs = tiny().locations.slice(0, 2)
     const m = await fetchRoadMatrix(locs, fake)
     expect(urls[0]).toBe(
-      'https://router.project-osrm.org/table/v1/driving/15.977500,45.813100;16.075800,45.712500?annotations=distance',
+      'https://router.project-osrm.org/table/v1/driving/15.977500,45.813100;16.075800,45.712500?annotations=distance,duration',
     )
     expect(m).toEqual({ ids: ['B', 'P'], km: [[0, 20.1373], [19.9656, 0]] })
     await fetchRoadMatrix(locs, fake)

@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import type { Location, RoadMatrix } from '../solver/types'
 
 /**
@@ -23,26 +24,32 @@ export function clearRoutingCache() {
   routeCache.clear()
 }
 
-/** Driving distances (km) between all locations, from the OSRM table service. */
+/** Driving distances (km) and travel times (minutes) between all locations, from the OSRM table service. */
 export async function fetchRoadMatrix(
   locations: Location[],
   fetchFn: Fetch = (u, i) => fetch(u, i),
   signal?: AbortSignal,
 ): Promise<RoadMatrix> {
   if (locations.length > MAX_TABLE_LOCATIONS)
-    throw new Error(`Javni servis za rute podržava najviše ${MAX_TABLE_LOCATIONS} lokacija.`)
+    throw new Error(tr('route.tooMany', { max: MAX_TABLE_LOCATIONS }))
   const key = locations.map((l) => `${l.id}@${coord(l)}`).join(';')
   const cached = matrixCache.get(key)
   if (cached) return cached
-  const url = `${OSRM_URL}/table/v1/driving/${locations.map(coord).join(';')}?annotations=distance`
+  const url = `${OSRM_URL}/table/v1/driving/${locations.map(coord).join(';')}?annotations=distance,duration`
   const res = await fetchFn(url, { signal })
-  if (!res.ok) throw new Error(`Servis za rute je vratio ${res.status}.`)
-  const body = (await res.json()) as { code: string; distances?: (number | null)[][]; message?: string }
-  if (body.code !== 'Ok' || !body.distances) throw new Error(`Servis za rute: ${body.message ?? body.code}.`)
+  if (!res.ok) throw new Error(tr('route.status', { status: res.status }))
+  const body = (await res.json()) as {
+    code: string
+    distances?: (number | null)[][]
+    durations?: (number | null)[][]
+    message?: string
+  }
+  if (body.code !== 'Ok' || !body.distances) throw new Error(tr('route.error', { msg: body.message ?? body.code }))
   const matrix: RoadMatrix = {
     ids: locations.map((l) => l.id),
     km: body.distances.map((row) => row.map((m) => (m === null ? NaN : m / 1000))),
   }
+  if (body.durations) matrix.minutes = body.durations.map((row) => row.map((sec) => (sec === null ? NaN : sec / 60)))
   matrixCache.set(key, matrix)
   return matrix
 }
@@ -60,9 +67,9 @@ export async function fetchRouteGeometry(
   if (cached) return cached
   const path = pts.map(([lat, lon]) => coord({ lat, lon })).join(';')
   const res = await fetchFn(`${OSRM_URL}/route/v1/driving/${path}?overview=full&geometries=geojson`, { signal })
-  if (!res.ok) throw new Error(`Servis za rute je vratio ${res.status}.`)
+  if (!res.ok) throw new Error(tr('route.status', { status: res.status }))
   const body = (await res.json()) as { code: string; routes?: { geometry: { coordinates: [number, number][] } }[] }
-  if (body.code !== 'Ok' || !body.routes?.[0]) throw new Error(`Servis za rute: ${body.code}.`)
+  if (body.code !== 'Ok' || !body.routes?.[0]) throw new Error(tr('route.error', { msg: body.code }))
   const line = body.routes[0].geometry.coordinates.map(([lon, lat]) => [lat, lon] as [number, number])
   routeCache.set(key, line)
   return line

@@ -1,3 +1,4 @@
+import { getLang, tr } from '../i18n'
 /**
  * Address search via the public Nominatim API (OpenStreetMap), decision D4.
  * Usage policy (https://operations.osmfoundation.org/policies/nominatim/):
@@ -90,10 +91,10 @@ export function createGeocoder(fetchFn: Fetch = (u, i) => fetch(u, i), now = () 
     if (wait > 0) await sleep(wait)
     if (signal?.aborted) return []
     last = now()
-    const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '8', 'accept-language': 'hr', addressdetails: '1' })
+    const params = new URLSearchParams({ q: query, format: 'jsonv2', limit: '8', 'accept-language': getLang(), addressdetails: '1' })
     if (onlyCroatia) params.set('countrycodes', 'hr')
     const res = await fetchFn(`${NOMINATIM_URL}?${params}`, { signal, headers: { Accept: 'application/json' } })
-    if (!res.ok) throw new Error(`Nominatim je vratio ${res.status}`)
+    if (!res.ok) throw new Error(tr('geo.nominatimStatus', { status: res.status }))
     const rows = (await res.json()) as NominatimRow[]
     // the same street often comes back as several OSM segments: keep one per name + place
     const seen = new Set<string>()
@@ -115,8 +116,8 @@ export function createGeocoder(fetchFn: Fetch = (u, i) => fetch(u, i), now = () 
     if (coords)
       return Promise.resolve([
         {
-          name: `Točka ${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}`,
-          address: `Koordinate ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}`,
+          name: tr('geo.point', { lat: coords.lat.toFixed(5), lon: coords.lon.toFixed(5) }),
+          address: tr('geo.coords', { lat: coords.lat.toFixed(6), lon: coords.lon.toFixed(6) }),
           ...coords,
           fromCoordinates: true,
         },

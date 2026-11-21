@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import type { ProblemInput, Truck } from '../solver/types'
 import { emptyInput } from './defaultData'
 
@@ -30,7 +31,7 @@ export function addTruck(input: ProblemInput, truck?: Partial<Truck>): ProblemIn
   const id = truck?.id ?? nextTruckId(input.trucks.map((t) => t.id))
   const added: Truck = {
     id,
-    name: truck?.name ?? `Kamion ${id}`,
+    name: truck?.name ?? tr('data.truckName', { id }),
     capacityKg: truck?.capacityKg ?? 3500,
     maxItems: truck?.maxItems ?? 2,
   }
@@ -53,7 +54,7 @@ export function addLocation(
   const ids = input.locations.map((l) => l.id)
   const isFirst = input.locations.length === 0
   const id = isFirst ? 'L0' : nextId('L', ids, 1, 1)
-  const base = { id, name: fields.name ?? (isFirst ? 'Baza' : id) }
+  const base = { id, name: fields.name ?? (isFirst ? tr('data.base') : id) }
   const location =
     input.coordinateMode === 'geo'
       ? { ...base, lat: fields.lat, lon: fields.lon, address: fields.address }
@@ -85,7 +86,7 @@ export function removeLocation(input: ProblemInput, id: string, cascade = false)
   if (id === input.baseId && input.orders.length > 0) {
     return {
       status: 'blocked',
-      message: `Baza ${id} se ne može obrisati dok postoje nalozi. Sve rute počinju i završavaju u bazi; najprije odaberi drugu bazu ili obriši naloge.`,
+      message: tr('edit.baseBlocked', { id }),
     }
   }
   const usedBy = ordersUsingLocation(input, id)
@@ -93,7 +94,7 @@ export function removeLocation(input: ProblemInput, id: string, cascade = false)
     return {
       status: 'needs-confirm',
       usedBy,
-      message: `Lokacija ${id} se koristi u ${usedBy.length === 1 ? 'nalogu' : 'nalozima'} ${usedBy.join(', ')}. Obrisati lokaciju i ${usedBy.length === 1 ? 'taj nalog' : 'te naloge'}?`,
+      message: tr('edit.locationUsed', { id, n: usedBy.length, ids: usedBy.join(', ') }),
     }
   }
   let next: ProblemInput = input
@@ -110,7 +111,7 @@ export function setBase(input: ProblemInput, id: string): ProblemInput {
 
 /** Why a new order cannot be added yet, or null when it can. */
 export function cannotAddOrderReason(input: ProblemInput): string | null {
-  if (input.locations.length < 2) return 'Za nalog trebaju barem dvije lokacije (preuzimanje i isporuka).'
+  if (input.locations.length < 2) return tr('edit.needTwoLocations')
   return null
 }
 

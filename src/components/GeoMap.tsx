@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import 'leaflet/dist/leaflet.css'
 import { useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip } from 'react-leaflet'
@@ -53,7 +54,7 @@ export default function GeoMap({ input, plan, visible }: Props) {
 
   return (
     <div className="card">
-      <h3>Karta ruta</h3>
+      <h3>{tr('geo.title')}</h3>
       <MapContainer className="geo-map" center={points[0] ?? ZAGREB} zoom={11} scrollWheelZoom={false}>
         <TileLayer url={OSM_TILES} attribution={OSM_ATTRIBUTION} />
         <FitBounds points={points} />
@@ -76,7 +77,7 @@ export default function GeoMap({ input, plan, visible }: Props) {
               <Polyline positions={line} pathOptions={{ color: '#111', weight: 7, opacity: 0.8, dashArray: road ? undefined : '2 8' }} />
               <Polyline positions={line} pathOptions={{ color, weight: 4, opacity: 1 }}>
                 <Tooltip sticky>
-                  {tp.truck.name}: {fmtKm(tp.totalKm)}, {tp.orderIds.join(', ') || 'bez naloga'}
+                  {tp.truck.name}: {fmtKm(tp.totalKm)}, {tp.orderIds.join(', ') || tr('res.noOrders')}
                 </Tooltip>
               </Polyline>
               {arrows.map((ar, k) => (
@@ -120,17 +121,15 @@ export default function GeoMap({ input, plan, visible }: Props) {
           </span>
         ))}
         <span>
-          <span className="swatch base" /> Baza {input.baseId}
+          <span className="swatch base" /> {tr('data.base')} {input.baseId}
         </span>
         <span className="muted">
           {!roadLines
-            ? 'Učitavam cestovne rute…'
+            ? tr('geo.loadingRoutes')
             : roadLines.failed
-              ? 'Servis za rute nije dostupan: prikazane su ravne linije između lokacija.'
-              : 'Rute po cestama (OpenStreetMap, OSRM).'}{' '}
-          {plan.distanceUsed === 'road'
-            ? 'Km u planu su cestovne udaljenosti.'
-            : `Km u planu: zračna udaljenost × faktor ${input.settings.roadFactor}.`}
+              ? tr('geo.routesDown')
+              : tr('geo.routesOk')}{' '}
+          {plan.distanceUsed === 'road' ? tr('geo.kmRoad') : tr('geo.kmAir', { f: input.settings.roadFactor })}
         </span>
       </div>
     </div>

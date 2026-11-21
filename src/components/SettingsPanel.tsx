@@ -1,4 +1,13 @@
-import { MAX_EXACT_ORDERS, type CoordinateMode, type Settings, type SolverMode, type TimeLimitMode } from '../solver'
+import { tr } from '../i18n'
+import {
+  MAX_EXACT_ORDERS,
+  type CoordinateMode,
+  type Objective,
+  type Settings,
+  type SolverMode,
+  type TimeLimitMode,
+  type TravelTimeSource,
+} from '../solver'
 
 interface Props {
   settings: Settings
@@ -7,48 +16,71 @@ interface Props {
   coordinateMode: CoordinateMode
 }
 
-const MODES: { value: TimeLimitMode; label: string; help: string }[] = [
-  {
-    value: 'drive+handling',
-    label: 'Vožnja + utovar/istovar',
-    help: 'Radni dan vozača: vrijeme vožnje plus utovar/istovar svake radnje (i pauza, ako je uključena). Zadana pretpostavka.',
-  },
-  { value: 'drive', label: 'Samo vožnja', help: 'U limit se računa samo vrijeme vožnje (km / brzina), bez utovara i pauze.' },
-  { value: 'none', label: 'Bez limita', help: 'Čista minimizacija kilometara, služi za usporedbu.' },
-]
-
-const SOLVERS: { value: SolverMode; label: string }[] = [
-  { value: 'auto', label: 'Automatski' },
-  { value: 'exact', label: 'Egzaktni' },
-  { value: 'heuristic', label: 'Heuristika' },
-]
-
 function solverHelp(mode: SolverMode, orders: number): string {
   const tooMany = orders > MAX_EXACT_ORDERS
   switch (mode) {
     case 'auto':
       return tooMany
-        ? `${orders} naloga > ${MAX_EXACT_ORDERS}: koristit će se heuristika (brza, bez jamstva optimuma).`
-        : `Do ${MAX_EXACT_ORDERS} naloga egzaktni solver (dokazivo optimalan), iznad toga heuristika.`
+        ? tr('set.solverAutoMany', { n: orders, max: MAX_EXACT_ORDERS })
+        : tr('set.solverAuto', { max: MAX_EXACT_ORDERS })
     case 'exact':
-      return tooMany
-        ? `Egzaktni solver podržava najviše ${MAX_EXACT_ORDERS} naloga (sada ${orders}). Odaberi Automatski ili Heuristiku.`
-        : 'Dokazivo optimalan raspored (dinamičko programiranje).'
+      return tooMany ? tr('set.solverExactMany', { n: orders, max: MAX_EXACT_ORDERS }) : tr('set.solverExact')
     case 'heuristic':
-      return 'Umetanje + lokalna pretraga + ruin & recreate. Brzo i za 50+ naloga, ali bez jamstva optimuma.'
+      return tr('set.solverHeuristic')
   }
+}
+
+function Segmented<T extends string>({
+  label,
+  value,
+  options,
+  onChange,
+  disabled,
+}: {
+  label: string
+  value: T
+  options: { value: T; label: string; title?: string }[]
+  onChange: (v: T) => void
+  disabled?: (v: T) => boolean
+}) {
+  return (
+    <div className="segmented" role="radiogroup" aria-label={label}>
+      {options.map((o) => (
+        <button
+          key={o.value}
+          role="radio"
+          aria-checked={value === o.value}
+          className={value === o.value ? 'active' : ''}
+          disabled={disabled?.(o.value)}
+          title={o.title}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
 }
 
 export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }: Props) {
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => onChange({ ...settings, [k]: v })
-  const active = MODES.find((m) => m.value === settings.timeLimitMode)!
   const exactBlocked = orderCount > MAX_EXACT_ORDERS
+  const geo = coordinateMode === 'geo'
+  const roadTimes = geo && settings.distanceSource === 'road' && (settings.travelTimeSource ?? 'road') === 'road'
+  const objective = settings.objective ?? 'km'
+
+  const modes: { value: TimeLimitMode; label: string; help: string }[] = [
+    { value: 'drive+handling', label: tr('set.limitDriveHandling'), help: tr('set.limitDriveHandlingHelp') },
+    { value: 'drive', label: tr('set.limitDrive'), help: tr('set.limitDriveHelp') },
+    { value: 'none', label: tr('set.limitNone'), help: tr('set.limitNoneHelp') },
+  ]
+  const active = modes.find((m) => m.value === settings.timeLimitMode)!
 
   return (
     <div className="card settings">
       <div className="settings-fields">
         <label>
-          Dnevni limit (h)
+          {tr('set.dailyLimit')}
           <input
             className="cell-input num"
             type="number"
@@ -58,7 +90,7 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
           />
         </label>
         <label>
-          Utovar / istovar (min)
+          {tr('set.handling')}
           <input
             className="cell-input num"
             type="number"
@@ -66,8 +98,8 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
             onChange={(e) => set('handlingMinutes', Number(e.target.value))}
           />
         </label>
-        <label>
-          Prosječna brzina (km/h)
+        <label title={roadTimes ? tr('set.speedFallbackTitle') : undefined}>
+          {roadTimes ? tr('set.speedFallback') : tr('set.speed')}
           <input
             className="cell-input num"
             type="number"
@@ -75,9 +107,21 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
             onChange={(e) => set('speedKmh', Number(e.target.value))}
           />
         </label>
-        {coordinateMode === 'geo' && settings.distanceSource === 'air' && (
-          <label title="Zračna udaljenost × faktor ≈ udaljenost po cesti">
-            Faktor ceste
+        {roadTimes && (
+          <label title={tr('set.truckMaxTitle')}>
+            {tr('set.truckMax')}
+            <input
+              className="cell-input num"
+              type="number"
+              min={1}
+              value={settings.truckMaxSpeedKmh ?? 80}
+              onChange={(e) => set('truckMaxSpeedKmh', Number(e.target.value))}
+            />
+          </label>
+        )}
+        {geo && settings.distanceSource === 'air' && (
+          <label title={tr('set.roadFactorTitle')}>
+            {tr('set.roadFactor')}
             <input
               className="cell-input num"
               type="number"
@@ -90,17 +134,13 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
         )}
         <div className="break-field">
           <label className="toggle">
-            <input
-              type="checkbox"
-              checked={settings.breakEnabled}
-              onChange={(e) => set('breakEnabled', e.target.checked)}
-            />
-            Obavezna pauza (gablec)
+            <input type="checkbox" checked={settings.breakEnabled} onChange={(e) => set('breakEnabled', e.target.checked)} />
+            {tr('set.break')}
           </label>
           <input
             className="cell-input num"
             type="number"
-            aria-label="Trajanje pauze (min)"
+            aria-label={tr('set.breakAria')}
             disabled={!settings.breakEnabled}
             value={settings.breakMinutes}
             onChange={(e) => set('breakMinutes', Number(e.target.value))}
@@ -111,69 +151,102 @@ export function SettingsPanel({ settings, onChange, orderCount, coordinateMode }
 
       <div className="settings-modes">
         <div className="mode">
-          <span className="mode-label">Što ulazi u dnevni limit</span>
-          <div className="segmented" role="radiogroup" aria-label="Što ulazi u dnevni limit">
-            {MODES.map((m) => (
-              <button
-                key={m.value}
-                role="radio"
-                aria-checked={settings.timeLimitMode === m.value}
-                className={settings.timeLimitMode === m.value ? 'active' : ''}
-                onClick={() => set('timeLimitMode', m.value)}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          <span className="mode-label">{tr('set.objective')}</span>
+          <Segmented<Objective>
+            label={tr('set.objective')}
+            value={objective}
+            options={[
+              { value: 'km', label: tr('set.objectiveKm') },
+              { value: 'balanced', label: tr('set.objectiveBalanced') },
+            ]}
+            onChange={(v) => set('objective', v)}
+          />
+          {objective === 'balanced' && (
+            <label className="inline-field">
+              {tr('set.balancePct')}
+              <input
+                className="cell-input num"
+                type="number"
+                min={0}
+                step={5}
+                value={settings.balanceMaxExtraPct ?? 10}
+                onChange={(e) => set('balanceMaxExtraPct', Number(e.target.value))}
+              />
+              <span className="unit">%</span>
+            </label>
+          )}
+          <p className="hint">
+            {objective === 'km' ? tr('set.objectiveKmHelp') : tr('set.objectiveBalancedHelp', { pct: settings.balanceMaxExtraPct ?? 10 })}
+          </p>
+        </div>
+
+        <div className="mode">
+          <span className="mode-label">{tr('set.limitWhat')}</span>
+          <Segmented<TimeLimitMode>
+            label={tr('set.limitWhat')}
+            value={settings.timeLimitMode}
+            options={modes}
+            onChange={(v) => set('timeLimitMode', v)}
+          />
           <p className="hint">{active.help}</p>
         </div>
 
-        {coordinateMode === 'geo' && (
+        {geo && (
           <div className="mode">
-            <span className="mode-label">Udaljenosti na stvarnoj karti</span>
-            <div className="segmented" role="radiogroup" aria-label="Udaljenosti na stvarnoj karti">
-              {(
-                [
-                  ['road', 'Po cestama (OSRM)'],
-                  ['air', 'Zračna × faktor'],
-                ] as const
-              ).map(([v, label]) => (
-                <button
-                  key={v}
-                  role="radio"
-                  aria-checked={settings.distanceSource === v}
-                  className={settings.distanceSource === v ? 'active' : ''}
-                  onClick={() => set('distanceSource', v)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <span className="mode-label">{tr('set.distances')}</span>
+            <Segmented
+              label={tr('set.distances')}
+              value={settings.distanceSource}
+              options={[
+                { value: 'road', label: tr('set.distRoad') },
+                { value: 'air', label: tr('set.distAir') },
+              ]}
+              onChange={(v) => set('distanceSource', v)}
+            />
             <p className="hint">
-              {settings.distanceSource === 'road'
-                ? 'Stvarne udaljenosti vožnje po cestovnoj mreži (OpenStreetMap, OSRM). Ako servis nije dostupan, koristi se zračna udaljenost × faktor.'
-                : `Zračna udaljenost × ${settings.roadFactor}: radi bez interneta, ali je samo procjena.`}
+              {settings.distanceSource === 'road' ? tr('set.distRoadHelp') : tr('set.distAirHelp', { f: settings.roadFactor })}
             </p>
           </div>
         )}
 
-        <div className="mode">
-          <span className="mode-label">Solver</span>
-          <div className="segmented" role="radiogroup" aria-label="Solver">
-            {SOLVERS.map((m) => (
-              <button
-                key={m.value}
-                role="radio"
-                aria-checked={settings.solverMode === m.value}
-                className={settings.solverMode === m.value ? 'active' : ''}
-                disabled={m.value === 'exact' && exactBlocked && settings.solverMode !== 'exact'}
-                title={m.value === 'exact' && exactBlocked ? `Najviše ${MAX_EXACT_ORDERS} naloga` : undefined}
-                onClick={() => set('solverMode', m.value)}
-              >
-                {m.label}
-              </button>
-            ))}
+        {geo && settings.distanceSource === 'road' && (
+          <div className="mode">
+            <span className="mode-label">{tr('set.travelTime')}</span>
+            <Segmented<TravelTimeSource>
+              label={tr('set.travelTime')}
+              value={settings.travelTimeSource ?? 'road'}
+              options={[
+                { value: 'road', label: tr('set.timeRoad') },
+                { value: 'speed', label: tr('set.timeSpeed') },
+              ]}
+              onChange={(v) => set('travelTimeSource', v)}
+            />
+            <p className="hint">
+              {roadTimes
+                ? tr('set.timeRoadHelp', { vmax: settings.truckMaxSpeedKmh ?? 80 })
+                : tr('set.timeSpeedHelp', { v: settings.speedKmh })}
+            </p>
           </div>
+        )}
+        {!geo && <p className="hint">{tr('set.xySpeedNote', { v: settings.speedKmh })}</p>}
+
+        <div className="mode">
+          <span className="mode-label">{tr('set.solver')}</span>
+          <Segmented<SolverMode>
+            label={tr('set.solver')}
+            value={settings.solverMode}
+            options={[
+              { value: 'auto', label: tr('set.solverAutoLabel') },
+              {
+                value: 'exact',
+                label: tr('set.solverExactLabel'),
+                title: exactBlocked ? tr('set.solverMaxTitle', { max: MAX_EXACT_ORDERS }) : undefined,
+              },
+              { value: 'heuristic', label: tr('set.solverHeuristicLabel') },
+            ]}
+            disabled={(v) => v === 'exact' && exactBlocked && settings.solverMode !== 'exact'}
+            onChange={(v) => set('solverMode', v)}
+          />
           <p className={`hint ${settings.solverMode === 'exact' && exactBlocked ? 'warn-text' : ''}`}>
             {solverHelp(settings.solverMode, orderCount)}
           </p>

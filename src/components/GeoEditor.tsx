@@ -1,3 +1,4 @@
+import { tr } from '../i18n'
 import 'leaflet/dist/leaflet.css'
 import type L from 'leaflet'
 import { useEffect, useState } from 'react'
@@ -60,7 +61,7 @@ export default function GeoEditor({ input, onChange }: Props) {
   const pick = (r: GeocodeResult) => {
     // keep what the user typed (e.g. "Horvatova ulica 13") when OSM only knows the street
     const name = r.houseNumberMissing ? query.trim() : r.name
-    const address = r.houseNumberMissing ? `${query.trim()} (približno: ${r.address})` : r.address
+    const address = r.houseNumberMissing ? tr('geo.approx', { query: query.trim(), address: r.address }) : r.address
     onChange(addLocation(input, { name, lat: round(r.lat), lon: round(r.lon), address }))
     setQuery('')
     setResults([])
@@ -76,21 +77,21 @@ export default function GeoEditor({ input, onChange }: Props) {
         <input
           className="cell-input text"
           type="search"
-          placeholder="Adresa, mjesto ili koordinate / Google Maps link"
-          aria-label="Traži adresu"
+          placeholder={tr('geo.placeholder')}
+          aria-label={tr('geo.searchAria')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
         <label className="toggle small">
-          <input type="checkbox" checked={onlyHr} onChange={(e) => setOnlyHr(e.target.checked)} /> samo HR
+          <input type="checkbox" checked={onlyHr} onChange={(e) => setOnlyHr(e.target.checked)} /> {tr('geo.onlyHr')}
         </label>
         {!tooShort && (results.length > 0 || status !== 'idle') && (
           <ul className="geo-results" role="listbox">
-            {status === 'loading' && <li className="muted">Tražim…</li>}
-            {status === 'empty' && <li className="muted">Nema rezultata.</li>}
+            {status === 'loading' && <li className="muted">{tr('geo.searching')}</li>}
+            {status === 'empty' && <li className="muted">{tr('geo.noResults')}</li>}
             {status === 'error' && (
               <li className="warn-text">
-                Pretraga trenutno ne radi ({error}). Klikni na kartu ili upiši koordinate ručno.
+                {tr('geo.searchDown', { error })}
               </li>
             )}
             {results.map((r) => (
@@ -100,7 +101,7 @@ export default function GeoEditor({ input, onChange }: Props) {
                   <small>{r.fromCoordinates ? r.address : r.detail || r.address}</small>
                   {r.houseNumberMissing && (
                     <small className="warn-text">
-                      Kućni broj nije u OpenStreetMap podacima: marker će biti na ulici, povuci ga na točno mjesto.
+                      {tr('geo.noHouseNumber')}
                     </small>
                   )}
                 </button>
@@ -153,9 +154,7 @@ export default function GeoEditor({ input, onChange }: Props) {
         )}
       </MapContainer>
       <p className="hint">
-        Klik na kartu dodaje lokaciju, a marker se može povući mišem. Pretraga: Nominatim / OpenStreetMap (najviše 1 upit u
-        sekundi). Kućni brojevi postoje samo gdje su upisani u OpenStreetMap; za točnu lokaciju zalijepi koordinate ili link
-        iz Google karata (desni klik na mjesto → kopiraj koordinate).
+        {tr('geo.editorHelp')}
       </p>
     </div>
   )

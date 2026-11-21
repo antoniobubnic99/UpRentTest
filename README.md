@@ -51,7 +51,7 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
   - opterećenje nakon svake radnje (kg i broj strojeva)
   - dionica i kumulativni km, vrijeme dolaska i odlaska
   - ukupna kilometraža i broj izvršenih naloga
-- **Ukupna kilometraža** cijelog voznog parka i **karta ruta**.
+- **Ukupna kilometraža** cijelog voznog parka i **karta ruta** (koordinatni sustav s brojevima na osima i mrežom od 1 km).
 - **Jasna upozorenja** za naloge koje nije moguće izvršiti, s razlogom. Na primjer: stroj je teži od nosivosti svih vozila ili nalog ne stane u radni dan.
 - **Nezavisni validator:** nakon svake optimizacije ponovno provjerava sva pravila i prikazuje „Provjera ograničenja: Sve OK”.
 
@@ -61,7 +61,12 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 - **Vrijeme utovara/istovara po nalogu** (veći teret može trajati duže). Ako polje ostane prazno, vrijedi zadanih 20 min.
 - **Obavezna pauza (gablec)** kao opcija u postavkama: prekidač i trajanje, po defaultu isključena.
 - **Solver: Automatski / Egzaktni / Heuristika.** Do 12 naloga radi egzaktni solver, a iznad toga se automatski uključuje heuristika (testirano do 50 naloga i 5 vozila). UI uvijek prikazuje koji je solver korišten.
-- **Linija vremena** po vozilu: vožnja, utovar, istovar, pauza i dnevni limit na zajedničkoj osi. Klik na točku označava korak u tablici.
+- **Vremenska linija** po vozilu: radni dan kao traka od blokova (vožnja s km, utovar i istovar s oznakom lokacije, pauza) na osi sa satima (početak u 07:00) i crvenom crtom dnevnog limita. Uz vozilo piše ukupno vrijeme i postotak dana. Klik na blok označava korak u tablici.
+- **Cilj optimizacije: Najmanje km / Ravnomjerna raspodjela.** Ravnomjerna raspodjela traži što kraći najduži radni dan, uz najviše +X % km u odnosu na najkraći plan (zadano 10 %), pa najmanje km. I dalje je egzaktna. Za podatke iz zadatka: kamion A vozi N01 i N04, ukupno 217,0 km (+16,9 km), A radi 122 min, B 495 min. Kad je jedno vozilo slabo iskorišteno, rezultat to sam predlaže, s gumbom „Primijeni ravnomjernu raspodjelu”.
+- **Brzina po relaciji:** na stvarnoj karti vrijeme vožnje svake dionice dolazi iz servisa za rute (npr. Zagreb – Karlovac 55,1 km za 48 min ≈ 69 km/h), a ne iz jedne prosječne brzine. Kamion na relaciji ne ide brže od 80 km/h (podesivo). Brzina svake dionice prikazana je u tablici rute.
+- **Četiri jezika:** hrvatski, engleski, francuski i njemački (izbornik u headeru, pamti se odabir). Prevedeni su i poruke solvera, upozorenja, CSV predložak i ispis za vozača.
+- **Ulazni podaci:** strelica na rubu zatvara ulazne podatke i širi rezultat, a druga ih širi preko cijelog ekrana za lakši unos (nalozi tada u više stupaca).
+- **Nalozi:** lokacija odabrana za preuzimanje ne nudi se za isporuku i obrnuto. Nalog s upozorenjem u rezultatu označen je žuto i u unosu, s razlogom ispod naloga; „Prikaži u unosu” vodi ravno na njega.
 - **Prava karta** (Leaflet + OpenStreetMap) s **rutama po cestama** (OSRM). Na stvarnoj karti optimizacija koristi **stvarne cestovne udaljenosti**. Ako servis nije dostupan, koristi se zračna udaljenost × faktor ceste (1,3) i aplikacija to javlja.
 - **Unos stvarnih lokacija:**
   - klik na kartu
@@ -76,12 +81,14 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 - **Raspored ekrana:** ulazni podaci i ograničenja su u lijevom izborniku iza hamburgera, a rezultati desno. Na mobitelu se izbornik otvara preko sadržaja.
 - **Usporedba scenarija:** isti podaci u tri tumačenja radnog dana jedan pored drugog: bez limita 182,2 km, limit 9 h 200,1 km, limit uz pauzu 217,0 km. Objašnjenje je generirano iz samih planova: koji nalozi prelaze na koje vozilo, koliko km „košta” ograničenje i zašto najkraći plan nije izvediv. Svaki scenarij se može primijeniti jednim klikom.
 - **Ispis plana za vozača:** jedna A4 stranica po vozilu, s redoslijedom, satnicom (početak u 07:00), lokacijama, radnjama, strojevima, teretom, stupcem za kvačicu i mjestom za potpis. U pregledniku se sprema kao PDF ([primjer](docs/primjer-plan-voznje.pdf)).
-- **Uvoz i izvoz preko Excela (CSV)** za vozila, lokacije i naloge:
-  - **predlošci za preuzimanje**: upišeš podatke i učitaš datoteku
+- **Uvoz i izvoz preko Excela (CSV), jedna datoteka** s tri sekcije (`#VOZILA`, `#LOKACIJE`, `#NALOZI`):
+  - **predložak za preuzimanje**: upišeš podatke i učitaš datoteku
+  - sekcija koje nema u datoteci ostaje nepromijenjena
+  - zaglavlja i nazivi sekcija prihvaćaju se na sva četiri jezika
   - lokacije mogu imati samo adresu, a koordinate se traže automatski
-  - uvoz se provjerava i javlja greške s brojem retka
+  - uvoz se provjerava i javlja greške s brojem retka u datoteci
 - **Cijeli skup kao JSON** i **link za dijeljenje** koji sadrži podatke u samom URL-u (komprimirano, ništa se ne šalje na server).
-- **Prilagođeno mobitelu:** koraci rute kao kartice, linija vremena preko cijele širine i polja bez zumiranja na iPhoneu.
+- **Prilagođeno mobitelu:** koraci rute kao kartice, vremenska linija preko cijele širine i polja bez zumiranja na iPhoneu.
 - **Izgled u stilu uprent.hr** (logo, boje, header), uz napomenu da je riječ o prototipu, a ne službenom proizvodu.
 
 ## Screenshotovi
@@ -93,6 +100,9 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 | [Utovar po nalogu (N09: 60 min)](docs/screenshots/05-nalozi-utovar-po-nalogu.png) | [Mobitel: rezultat](docs/screenshots/06-mobitel-rezultat.png) · [izbornik](docs/screenshots/07-mobitel-izbornik.png) |
 | [Stvarna karta: primjer okolice Zagreba](docs/screenshots/08-stvarna-karta.png) | [Pretraga adrese (Nominatim)](docs/screenshots/09-pretraga-adrese.png) |
 | [Usporedba scenarija](docs/screenshots/10-usporedba-scenarija.png) | [Primjer plana vožnje (PDF)](docs/primjer-plan-voznje.pdf) |
+| [Prijedlog ravnomjerne raspodjele](docs/screenshots/11-prijedlog-ravnomjerne-raspodjele.png) | [Vremenska linija (ravnomjerna raspodjela)](docs/screenshots/12-vremenska-linija-ravnomjerno.png) |
+| [Karta s brojevima na osima](docs/screenshots/13-karta-s-brojevima-na-osima.png) | [Unos preko cijelog ekrana, nalozi s upozorenjem](docs/screenshots/14-cijeli-ekran-nalozi-s-upozorenjem.png) |
+| [Engleski jezik](docs/screenshots/15-engleski.png) | |
 
 ## Struktura
 
@@ -105,7 +115,7 @@ src/
     time.ts                  # radno vrijeme rute (vožnja, utovar/istovar, pauza)
     validatePlan.ts          # nezavisna provjera poslovnih pravila
     validateInput.ts         # provjera ulaznih podataka
-    scenarios.ts             # usporedba scenarija s objašnjenjima
+    scenarios.ts             # usporedba scenarija s objašnjenjima, prijedlog ravnomjerne raspodjele
     distance.ts              # euklidska / haversine udaljenost, zaokružena na 0,1 km
     types.ts
     *.test.ts                # testovi
@@ -116,14 +126,15 @@ src/
     io.ts                    # JSON / CSV uvoz i izvoz, predlošci, link za dijeljenje
     routing.ts               # cestovne udaljenosti i rute (OSRM)
     googleMaps.ts            # linkovi „Otvori u Google kartama”
-  components/                # React UI (drawer, linija vremena, karte, rezultati)
+  i18n/                      # prijevodi: hr (izvor), en, fr, de; TypeScript provjerava potpunost
+  components/                # React UI (drawer, vremenska linija, karte, rezultati)
 tools/reference_check.py     # nezavisna Python provjera
 docs/                        # dokumentacija za predaju
 ```
 
 ## Testovi
 
-`npm test` pokreće **176 test caseova**.
+`npm test` pokreće **201 test case** u 11 datoteka.
 
 ### Poslovna ograničenja iz zadatka (`src/solver/solver.test.ts`)
 
@@ -147,6 +158,9 @@ docs/                        # dokumentacija za predaju
 | `src/data/geocode.test.ts` | Pretraga adresa: najviše 1 upit u sekundi, obrada rezultata i grešaka |
 | `src/solver/scenarios.test.ts` | Usporedba scenarija: 182,2 / 200,1 / 217,0 km i generirana objašnjenja (npr. „Kamion B bi radio 9 h 42 min”) |
 | `src/data/io.test.ts` | JSON i CSV u oba smjera, Excel format (BOM, zarez, navodnici), greške s brojem retka, link za dijeljenje |
+| `src/solver/speed-and-balance.test.ts` | Ravnomjerna raspodjela: 217,0 km (A 122 min, B 495 min), 0 % = 200,1 km, bez granice 284,2 km, usporedba s brute force pretragom, heuristika unutar granice km; brzina po relaciji: OSRM vrijeme, ograničenje brzine kamiona, najbrža ruta kad najkraća ne stane u dan, Zagreb – Karlovac 69 km/h; prijedlog „slabo iskorišten” |
+| `src/data/csv-all.test.ts` | Jedan CSV s tri sekcije: predložak, uvoz u oba smjera (200,1 km), datoteke na EN/FR/DE, sekcija koje nema, greške s brojem retka |
+| `src/i18n/i18n.test.ts` | Svi jezici imaju sve tekstove i parametre, prijevodi nisu kopije hrvatskog, poruke solvera prate odabrani jezik |
 | `src/data/roads-and-csv.test.ts` | Cestovne udaljenosti u solveru i validatoru, rezervna zračna udaljenost, OSRM pozivi i greške, koordinate i Google Maps linkovi, oznaka kad kućni broj nije u OSM-u, CSV predlošci i uvoz vozila i lokacija |
 
 ## Dokumentacija za predaju

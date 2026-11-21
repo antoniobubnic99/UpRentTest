@@ -1,3 +1,4 @@
+import { getLang, tr } from '../i18n'
 import { defaultSettings } from './defaultData'
 import type { Location, Machine, Order, ProblemInput, Settings, Truck } from '../solver/types'
 
@@ -45,18 +46,18 @@ const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : u
 export function inputFromUnknown(raw: unknown): ProblemInput {
   const problems: string[] = []
   const root = isObj(raw) && isObj(raw.data) ? raw.data : raw
-  if (isObj(raw) && raw.format !== undefined && raw.format !== FORMAT) problems.push(`Nepoznat format datoteke: ${String(raw.format)}.`)
-  if (!isObj(root)) throw new ImportError(['Datoteka ne sadrži podatke planera.'])
+  if (isObj(raw) && raw.format !== undefined && raw.format !== FORMAT) problems.push(tr('io.unknownFormat', { format: String(raw.format) }))
+  if (!isObj(root)) throw new ImportError([tr('io.noData')])
 
   const arr = (key: string): Obj[] => {
     const v = root[key]
     if (v === undefined) return []
     if (!Array.isArray(v)) {
-      problems.push(`Polje "${key}" mora biti lista.`)
+      problems.push(tr('io.notList', { key }))
       return []
     }
     return v.filter((x, i) => {
-      if (!isObj(x)) problems.push(`${key}[${i}] nije ispravan zapis.`)
+      if (!isObj(x)) problems.push(tr('io.badRecord', { key, i }))
       return isObj(x)
     }) as Obj[]
   }
@@ -64,7 +65,7 @@ export function inputFromUnknown(raw: unknown): ProblemInput {
   const coordinateMode = root.coordinateMode === 'geo' ? 'geo' : 'xy'
   const trucks: Truck[] = arr('trucks').map((t, i) => ({
     id: str(t.id) ?? `T${i + 1}`,
-    name: str(t.name) ?? str(t.id) ?? `Vozilo ${i + 1}`,
+    name: str(t.name) ?? str(t.id) ?? tr('data.vehicleN', { n: i + 1 }),
     capacityKg: num(t.capacityKg) ?? NaN,
     maxItems: num(t.maxItems) ?? NaN,
   }))
@@ -109,6 +110,10 @@ export function inputFromUnknown(raw: unknown): ProblemInput {
     solverMode: pick('solverMode', (v) => v === 'auto' || v === 'exact' || v === 'heuristic'),
     roadFactor: pick('roadFactor', (v) => num(v) !== undefined),
     distanceSource: pick('distanceSource', (v) => v === 'road' || v === 'air'),
+    travelTimeSource: pick('travelTimeSource', (v) => v === 'road' || v === 'speed'),
+    truckMaxSpeedKmh: pick('truckMaxSpeedKmh', (v) => num(v) !== undefined),
+    objective: pick('objective', (v) => v === 'km' || v === 'balanced'),
+    balanceMaxExtraPct: pick('balanceMaxExtraPct', (v) => num(v) !== undefined),
   }
 
   const baseId = str(root.baseId) ?? locations[0]?.id ?? ''
@@ -121,40 +126,116 @@ export function importJson(text: string): ProblemInput {
   try {
     raw = JSON.parse(text)
   } catch {
-    throw new ImportError(['Datoteka nije ispravan JSON.'])
+    throw new ImportError([tr('io.badJson')])
   }
   return inputFromUnknown(raw)
 }
 
-// ---------- CSV (orders) ----------
+// ---------- CSV ----------
+//
+// One CSV file with three sections (vehicles, locations, orders), each started by a marker
+// row ("#VOZILA", "#LOKACIJE", "#NALOZI") and its own header row. Section markers and column
+// names are accepted in Croatian, English, French and German; files are written in the
+// current language. ";" separator, decimal comma accepted, UTF-8 with BOM (Excel).
+// The single-section functions (vehicles / locations / orders) are kept for the tests and as
+// building blocks.
 
-export const CSV_HEADER = ['nalog', 'stroj', 'tezina_kg', 'preuzimanje', 'isporuka', 'utovar_min', 'istovar_min']
+type Section = 'trucks' | 'locations' | 'orders'
+export type CsvKind = Section
+
+/** Column ids (canonical = Croatian) with their names in hr / en / fr / de. */
+const COLUMNS: Record<Section, [string, string, string, string][]> = {
+  trucks: [
+    ['id', 'id', 'id', 'id'],
+    ['naziv', 'name', 'nom', 'bezeichnung'],
+    ['nosivost_kg', 'capacity_kg', 'charge_utile_kg', 'nutzlast_kg'],
+    ['max_strojeva', 'max_machines', 'max_machines', 'max_maschinen'],
+  ],
+  locations: [
+    ['id', 'id', 'id', 'id'],
+    ['naziv', 'name', 'nom', 'bezeichnung'],
+    ['x_km', 'x_km', 'x_km', 'x_km'],
+    ['y_km', 'y_km', 'y_km', 'y_km'],
+    ['lat', 'lat', 'lat', 'lat'],
+    ['lon', 'lon', 'lon', 'lon'],
+    ['adresa', 'address', 'adresse', 'adresse'],
+    ['baza', 'base', 'base', 'basis'],
+  ],
+  orders: [
+    ['nalog', 'order', 'ordre', 'auftrag'],
+    ['stroj', 'machine', 'machine', 'maschine'],
+    ['tezina_kg', 'weight_kg', 'poids_kg', 'gewicht_kg'],
+    ['preuzimanje', 'pickup', 'enlevement', 'abholung'],
+    ['isporuka', 'delivery', 'livraison', 'lieferung'],
+    ['utovar_min', 'loading_min', 'chargement_min', 'beladen_min'],
+    ['istovar_min', 'unloading_min', 'dechargement_min', 'entladen_min'],
+  ],
+}
+const SECTION_NAMES: Record<Section, [string, string, string, string]> = {
+  trucks: ['VOZILA', 'VEHICLES', 'VEHICULES', 'FAHRZEUGE'],
+  locations: ['LOKACIJE', 'LOCATIONS', 'LIEUX', 'STANDORTE'],
+  orders: ['NALOZI', 'ORDERS', 'ORDRES', 'AUFTRAEGE'],
+}
+const LANG_INDEX: Record<string, number> = { hr: 0, en: 1, fr: 2, de: 3 }
+
+const fold = (s: string) =>
+  s
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/ä/g, 'ae')
+    .replace(/ö/g, 'oe')
+    .replace(/ü/g, 'ue')
+    .replace(/\s+/g, '_')
+
+/** Canonical column id for a header cell in any supported language, or the folded cell. */
+function canonical(section: Section, cell: string): string {
+  const f = fold(cell)
+  const col = COLUMNS[section].find((names) => names.some((n) => fold(n) === f))
+  return col ? col[0] : f
+}
+
+/** Name of a column in the current language. */
+const colName = (section: Section, id: string) => COLUMNS[section].find((c) => c[0] === id)![LANG_INDEX[getLang()]]
+
+const headerOf = (section: Section, lang = getLang()) => COLUMNS[section].map((c) => c[LANG_INDEX[lang]])
+
+export const CSV_HEADER = COLUMNS.orders.map((c) => c[0])
+export const TRUCKS_HEADER = COLUMNS.trucks.map((c) => c[0])
+export const LOCATIONS_HEADER = COLUMNS.locations.map((c) => c[0])
 
 function csvCell(v: string | number | undefined): string {
-  const s = v === undefined ? '' : String(v)
+  const s = v === undefined ? '' : typeof v === 'number' ? String(v) : v
   return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
 }
 
-/** Orders as CSV with ";" separator (opens directly in Excel with Croatian locale). */
-export function exportOrdersCsv(input: ProblemInput): string {
-  const weight = new Map(input.machines.map((m) => [m.id, m.weightKg]))
-  const rows = input.orders.map((o) =>
-    [o.id, o.machineId, weight.get(o.machineId), o.pickupId, o.deliveryId, o.pickupMinutes, o.deliveryMinutes]
-      .map(csvCell)
-      .join(';'),
-  )
-  return [CSV_HEADER.join(';'), ...rows].join('\r\n') + '\r\n'
+function toCsv(header: string[], rows: (string | number | undefined)[][]): string {
+  return [header.join(';'), ...rows.map((r) => r.map(csvCell).join(';'))].join('\r\n') + '\r\n'
 }
 
-/** Splits CSV text into rows of cells; supports quotes, ";" / "," / tab separators. */
-export function parseCsv(text: string): string[][] {
+interface CsvRow {
+  /** 1-based line number in the file */
+  line: number
+  cells: string[]
+}
+
+/** Splits CSV text into rows of cells with line numbers; supports quotes, ";" / "," / tab. */
+function parseCsvRows(text: string): CsvRow[] {
   const clean = text.replace(/^﻿/, '')
-  const firstLine = clean.split(/\r?\n/, 1)[0]
-  const sep = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ','
-  const rows: string[][] = []
+  const sep = clean.includes(';') ? ';' : clean.includes('\t') ? '\t' : ','
+  const rows: CsvRow[] = []
   let row: string[] = []
   let cell = ''
   let quoted = false
+  let line = 1
+  let rowLine = 1
+  const flush = () => {
+    row.push(cell)
+    if (row.some((x) => x.trim() !== '')) rows.push({ line: rowLine, cells: row })
+    row = []
+    cell = ''
+  }
   for (let i = 0; i < clean.length; i++) {
     const c = clean[i]
     if (quoted) {
@@ -162,172 +243,92 @@ export function parseCsv(text: string): string[][] {
         cell += '"'
         i++
       } else if (c === '"') quoted = false
-      else cell += c
+      else {
+        if (c === '\n') line++
+        cell += c
+      }
     } else if (c === '"') quoted = true
     else if (c === sep) {
       row.push(cell)
       cell = ''
     } else if (c === '\n' || c === '\r') {
       if (c === '\r' && clean[i + 1] === '\n') i++
-      row.push(cell)
-      if (row.some((x) => x.trim() !== '')) rows.push(row)
-      row = []
-      cell = ''
+      flush()
+      line++
+      rowLine = line
     } else cell += c
   }
-  row.push(cell)
-  if (row.some((x) => x.trim() !== '')) rows.push(row)
+  flush()
   return rows
+}
+
+/** Splits CSV text into rows of cells; supports quotes, ";" / "," / tab separators. */
+export function parseCsv(text: string): string[][] {
+  return parseCsvRows(text).map((r) => r.cells)
 }
 
 const parseNumber = (s: string) => Number(s.trim().replace(/\s/g, '').replace(',', '.'))
 
-/**
- * Replaces the orders (and their machines) with the ones from a CSV. Locations must already
- * exist; every problem is reported with its row number and nothing is changed on error.
- */
-export function importOrdersCsv(input: ProblemInput, text: string): ProblemInput {
-  const rows = parseCsv(text)
-  if (rows.length === 0) throw new ImportError(['CSV je prazan.'])
-  const header = rows[0].map((h) => h.trim().toLowerCase())
-  const col = (name: string) => header.indexOf(name)
-  const required = ['nalog', 'stroj', 'tezina_kg', 'preuzimanje', 'isporuka']
-  const missing = required.filter((r) => col(r) < 0)
-  if (missing.length) throw new ImportError([`CSV nema stupce: ${missing.join(', ')}. Očekivano zaglavlje: ${CSV_HEADER.join(';')}`])
+type Table = { line: number; get: (name: string) => string }[]
 
-  const locIds = new Set(input.locations.map((l) => l.id))
-  const problems: string[] = []
-  const orders: Order[] = []
-  const machines: Machine[] = []
-  rows.slice(1).forEach((r, i) => {
-    const line = i + 2
-    const get = (name: string) => (col(name) >= 0 ? (r[col(name)] ?? '').trim() : '')
-    const id = get('nalog')
-    const machineId = get('stroj')
-    const weight = parseNumber(get('tezina_kg'))
-    const pickupId = get('preuzimanje')
-    const deliveryId = get('isporuka')
-    if (!id || !machineId) problems.push(`Red ${line}: nedostaje oznaka naloga ili stroja.`)
-    if (!(weight > 0)) problems.push(`Red ${line}: težina mora biti broj veći od 0.`)
-    for (const [label, loc] of [
-      ['preuzimanja', pickupId],
-      ['isporuke', deliveryId],
-    ] as const) {
-      if (!locIds.has(loc)) problems.push(`Red ${line}: lokacija ${label} "${loc}" ne postoji.`)
-    }
-    const order: Order = { id, machineId, pickupId, deliveryId }
-    for (const [key, name] of [
-      ['pickupMinutes', 'utovar_min'],
-      ['deliveryMinutes', 'istovar_min'],
-    ] as const) {
-      const v = get(name)
-      if (v !== '') {
-        const n = parseNumber(v)
-        if (!(n >= 0)) problems.push(`Red ${line}: ${name} mora biti broj ≥ 0.`)
-        order[key] = n
-      }
-    }
-    orders.push(order)
-    machines.push({ id: machineId, weightKg: weight })
-  })
-  if (orders.length === 0) problems.push('CSV nema nijednog naloga.')
-  if (problems.length) throw new ImportError(problems)
-  return { ...input, orders, machines }
-}
-
-// ---------- CSV (vehicles, locations) and templates ----------
-
-export const TRUCKS_HEADER = ['id', 'naziv', 'nosivost_kg', 'max_strojeva']
-export const LOCATIONS_HEADER = ['id', 'naziv', 'x_km', 'y_km', 'lat', 'lon', 'adresa', 'baza']
-
-function toCsv(header: string[], rows: (string | number | undefined)[][]): string {
-  return [header.join(';'), ...rows.map((r) => r.map(csvCell).join(';'))].join('\r\n') + '\r\n'
-}
-
-/** Reads a CSV with a header row; returns a getter per data row (with its line number). */
-function readTable(text: string, required: string[]): { line: number; get: (name: string) => string }[] {
-  const rows = parseCsv(text)
-  if (rows.length === 0) throw new ImportError(['CSV je prazan.'])
-  const header = rows[0].map((h) => h.trim().toLowerCase())
+/** Header row + data rows of one section; checks the required columns. */
+function toTable(section: Section, rows: CsvRow[], required: string[]): Table {
+  if (rows.length === 0) throw new ImportError([tr('csv.empty')])
+  const header = rows[0].cells.map((h) => canonical(section, h))
   const missing = required.filter((r) => !header.includes(r))
-  if (missing.length) throw new ImportError([`CSV nema stupce: ${missing.join(', ')}. Preuzmi predložak za ispravno zaglavlje.`])
-  return rows.slice(1).map((r, i) => ({
-    line: i + 2,
+  if (missing.length)
+    throw new ImportError([
+      tr('csv.missingColumns', {
+        section: SECTION_NAMES[section][LANG_INDEX[getLang()]],
+        cols: missing.map((m) => COLUMNS[section].find((c) => c[0] === m)![LANG_INDEX[getLang()]]).join(', '),
+        header: headerOf(section).join(';'),
+      }),
+    ])
+  return rows.slice(1).map((r) => ({
+    line: r.line,
     get: (name: string) => {
       const c = header.indexOf(name)
-      return c >= 0 ? (r[c] ?? '').trim() : ''
+      return c >= 0 ? (r.cells[c] ?? '').trim() : ''
     },
   }))
 }
 
-export function exportTrucksCsv(input: ProblemInput): string {
-  return toCsv(
-    TRUCKS_HEADER,
-    input.trucks.map((t) => [t.id, t.name, t.capacityKg, t.maxItems]),
-  )
-}
+const row = (line: number, text: string) => tr('csv.row', { line, text })
+const YES = new Set(['da', 'd', 'x', '1', 'yes', 'y', 'true', 'oui', 'o', 'ja', 'j'])
 
-/** Replaces the vehicles. */
-export function importTrucksCsv(input: ProblemInput, text: string): ProblemInput {
-  const problems: string[] = []
-  const trucks: Truck[] = readTable(text, ['id', 'nosivost_kg', 'max_strojeva']).map(({ line, get }) => {
+function readTrucks(t: Table, problems: string[]): Truck[] {
+  const trucks: Truck[] = t.map(({ line, get }) => {
     const id = get('id')
     const capacityKg = parseNumber(get('nosivost_kg'))
     const maxItems = parseNumber(get('max_strojeva'))
-    if (!id) problems.push(`Red ${line}: nedostaje oznaka vozila.`)
-    if (!(capacityKg > 0)) problems.push(`Red ${line}: nosivost mora biti broj veći od 0.`)
-    if (!(Number.isInteger(maxItems) && maxItems >= 1)) problems.push(`Red ${line}: max_strojeva mora biti cijeli broj ≥ 1.`)
-    return { id, name: get('naziv') || `Kamion ${id}`, capacityKg, maxItems }
+    if (!id) problems.push(row(line, tr('csv.noTruckId')))
+    if (!(capacityKg > 0)) problems.push(row(line, tr('csv.capacity')))
+    if (!(Number.isInteger(maxItems) && maxItems >= 1)) problems.push(row(line, tr('csv.maxItems')))
+    return { id, name: get('naziv') || tr('data.truckName', { id }), capacityKg, maxItems }
   })
-  const ids = trucks.map((t) => t.id)
+  const ids = trucks.map((x) => x.id)
   const dup = ids.filter((id, i) => id && ids.indexOf(id) !== i)
-  if (dup.length) problems.push(`Oznake vozila se ponavljaju: ${[...new Set(dup)].join(', ')}.`)
-  if (trucks.length === 0) problems.push('CSV nema nijednog vozila.')
-  if (problems.length) throw new ImportError(problems)
-  return { ...input, trucks }
+  if (dup.length) problems.push(tr('csv.dupTrucks', { ids: [...new Set(dup)].join(', ') }))
+  if (trucks.length === 0) problems.push(tr('csv.noTrucks'))
+  return trucks
 }
 
-export function exportLocationsCsv(input: ProblemInput): string {
-  return toCsv(
-    LOCATIONS_HEADER,
-    input.locations.map((l) => [
-      l.id,
-      l.name,
-      l.x,
-      l.y,
-      l.lat,
-      l.lon,
-      l.address,
-      l.id === input.baseId ? 'da' : '',
-    ]),
-  )
-}
-
-const YES = new Set(['da', 'd', 'x', '1', 'yes', 'y', 'true'])
-
-/**
- * Replaces the locations. The coordinate mode follows the file: x_km / y_km filled -> task
- * grid; otherwise real map (lat / lon, or only an address that the app then geocodes).
- * Returns the ids that still need geocoding. Orders must keep pointing at existing locations.
- */
-export function importLocationsCsv(input: ProblemInput, text: string): { input: ProblemInput; toGeocode: string[] } {
-  const problems: string[] = []
-  const rows = readTable(text, ['id'])
-  const xy = rows.some((r) => r.get('x_km') !== '' || r.get('y_km') !== '')
+function readLocations(t: Table, problems: string[]) {
+  const xy = t.some((r) => r.get('x_km') !== '' || r.get('y_km') !== '')
   const toGeocode: string[] = []
   let baseId = ''
-  const locations: Location[] = rows.map(({ line, get }) => {
+  const locations: Location[] = t.map(({ line, get }) => {
     const id = get('id')
-    if (!id) problems.push(`Red ${line}: nedostaje oznaka lokacije.`)
+    if (!id) problems.push(row(line, tr('csv.noLocationId')))
     const loc: Location = { id, name: get('naziv') || id }
-    if (YES.has(get('baza').toLowerCase())) {
-      if (baseId) problems.push(`Red ${line}: baza je već ${baseId}; označi samo jednu bazu.`)
+    if (YES.has(fold(get('baza')))) {
+      if (baseId) problems.push(row(line, tr('csv.twoBases', { base: baseId })))
       else baseId = id
     }
     if (xy) {
       loc.x = parseNumber(get('x_km'))
       loc.y = parseNumber(get('y_km'))
-      if (!Number.isFinite(loc.x) || !Number.isFinite(loc.y)) problems.push(`Red ${line}: x_km i y_km moraju biti brojevi.`)
+      if (!Number.isFinite(loc.x) || !Number.isFinite(loc.y)) problems.push(row(line, tr('csv.xy')))
     } else {
       const lat = get('lat')
       const lon = get('lon')
@@ -336,50 +337,227 @@ export function importLocationsCsv(input: ProblemInput, text: string): { input: 
       if (lat !== '' || lon !== '') {
         loc.lat = parseNumber(lat)
         loc.lon = parseNumber(lon)
-        if (!(Math.abs(loc.lat) <= 90 && Math.abs(loc.lon) <= 180))
-          problems.push(`Red ${line}: lat mora biti između -90 i 90, a lon između -180 i 180.`)
+        if (!(Math.abs(loc.lat) <= 90 && Math.abs(loc.lon) <= 180)) problems.push(row(line, tr('csv.latLon')))
       } else if (address) {
         loc.lat = NaN
         loc.lon = NaN
         toGeocode.push(id)
-      } else problems.push(`Red ${line}: upiši koordinate (x_km, y_km ili lat, lon) ili adresu.`)
+      } else problems.push(row(line, tr('csv.noPosition')))
     }
     return loc
   })
   const ids = locations.map((l) => l.id)
   const dup = ids.filter((id, i) => id && ids.indexOf(id) !== i)
-  if (dup.length) problems.push(`Oznake lokacija se ponavljaju: ${[...new Set(dup)].join(', ')}.`)
-  if (locations.length === 0) problems.push('CSV nema nijedne lokacije.')
-  const known = new Set(ids)
-  const broken = input.orders.filter((o) => !known.has(o.pickupId) || !known.has(o.deliveryId)).map((o) => o.id)
-  if (broken.length)
-    problems.push(
-      `Nalozi ${broken.join(', ')} koriste lokacije kojih nema u CSV-u. Dodaj te lokacije ili najprije učitaj nove naloge.`,
-    )
-  if (problems.length) throw new ImportError(problems)
-  if (!baseId) baseId = known.has(input.baseId) ? input.baseId : ids[0]
-  return { input: { ...input, coordinateMode: xy ? 'xy' : 'geo', locations, baseId }, toGeocode }
+  if (dup.length) problems.push(tr('csv.dupLocations', { ids: [...new Set(dup)].join(', ') }))
+  if (locations.length === 0) problems.push(tr('csv.noLocations'))
+  return { xy, locations, baseId, toGeocode }
 }
 
-export type CsvKind = 'trucks' | 'locations' | 'orders'
+function readOrders(t: Table, locIds: Set<string>, problems: string[]) {
+  const orders: Order[] = []
+  const machines: Machine[] = []
+  for (const { line, get } of t) {
+    const id = get('nalog')
+    const machineId = get('stroj')
+    const weight = parseNumber(get('tezina_kg'))
+    const pickupId = get('preuzimanje')
+    const deliveryId = get('isporuka')
+    if (!id || !machineId) problems.push(row(line, tr('csv.noOrderId')))
+    if (!(weight > 0)) problems.push(row(line, tr('csv.weight')))
+    if (!locIds.has(pickupId)) problems.push(row(line, tr('csv.noPickup', { loc: pickupId })))
+    if (!locIds.has(deliveryId)) problems.push(row(line, tr('csv.noDelivery', { loc: deliveryId })))
+    if (pickupId && pickupId === deliveryId) problems.push(row(line, tr('csv.sameLocation', { loc: pickupId })))
+    const order: Order = { id, machineId, pickupId, deliveryId }
+    for (const [key, name] of [
+      ['pickupMinutes', 'utovar_min'],
+      ['deliveryMinutes', 'istovar_min'],
+    ] as const) {
+      const v = get(name)
+      if (v !== '') {
+        const n = parseNumber(v)
+        if (!(n >= 0)) problems.push(row(line, tr('csv.minutes', { col: colName('orders', name) })))
+        order[key] = n
+      }
+    }
+    orders.push(order)
+    machines.push({ id: machineId, weightKg: weight })
+  }
+  if (orders.length === 0) problems.push(tr('csv.noOrders'))
+  return { orders, machines }
+}
 
-/** Fill-in templates with the header and a few example rows (to be overwritten). */
+// ----- single sections (kept for compatibility and tests) -----
+
+/** Replaces the orders (and their machines); locations must already exist; nothing changes on error. */
+export function importOrdersCsv(input: ProblemInput, text: string): ProblemInput {
+  const problems: string[] = []
+  const t = toTable('orders', parseCsvRows(text), ['nalog', 'stroj', 'tezina_kg', 'preuzimanje', 'isporuka'])
+  const { orders, machines } = readOrders(t, new Set(input.locations.map((l) => l.id)), problems)
+  if (problems.length) throw new ImportError(problems)
+  return { ...input, orders, machines }
+}
+
+/** Replaces the vehicles. */
+export function importTrucksCsv(input: ProblemInput, text: string): ProblemInput {
+  const problems: string[] = []
+  const trucks = readTrucks(toTable('trucks', parseCsvRows(text), ['id', 'nosivost_kg', 'max_strojeva']), problems)
+  if (problems.length) throw new ImportError(problems)
+  return { ...input, trucks }
+}
+
+/**
+ * Replaces the locations. The coordinate mode follows the file: x_km / y_km filled -> task
+ * grid; otherwise real map (lat / lon, or only an address that the app then geocodes).
+ * Returns the ids that still need geocoding. Orders must keep pointing at existing locations.
+ */
+export function importLocationsCsv(input: ProblemInput, text: string): { input: ProblemInput; toGeocode: string[] } {
+  const problems: string[] = []
+  const r = readLocations(toTable('locations', parseCsvRows(text), ['id']), problems)
+  const known = new Set(r.locations.map((l) => l.id))
+  const broken = input.orders.filter((o) => !known.has(o.pickupId) || !known.has(o.deliveryId)).map((o) => o.id)
+  if (broken.length) problems.push(tr('csv.brokenOrders', { ids: broken.join(', ') }))
+  if (problems.length) throw new ImportError(problems)
+  const baseId = r.baseId || (known.has(input.baseId) ? input.baseId : r.locations[0].id)
+  return { input: { ...input, coordinateMode: r.xy ? 'xy' : 'geo', locations: r.locations, baseId }, toGeocode: r.toGeocode }
+}
+
+export function exportOrdersCsv(input: ProblemInput, lang = 'hr' as Parameters<typeof headerOf>[1]): string {
+  return toCsv(headerOf('orders', lang), orderRows(input))
+}
+export function exportTrucksCsv(input: ProblemInput): string {
+  return toCsv(headerOf('trucks', 'hr'), truckRows(input))
+}
+export function exportLocationsCsv(input: ProblemInput): string {
+  return toCsv(headerOf('locations', 'hr'), locationRows(input, 'da'))
+}
+
+const truckRows = (input: ProblemInput) => input.trucks.map((t) => [t.id, t.name, t.capacityKg, t.maxItems])
+const locationRows = (input: ProblemInput, yes: string) =>
+  input.locations.map((l) => [l.id, l.name, l.x, l.y, l.lat, l.lon, l.address, l.id === input.baseId ? yes : ''])
+const orderRows = (input: ProblemInput) => {
+  const weight = new Map(input.machines.map((m) => [m.id, m.weightKg]))
+  return input.orders.map((o) => [o.id, o.machineId, weight.get(o.machineId), o.pickupId, o.deliveryId, o.pickupMinutes, o.deliveryMinutes])
+}
+
+/** Single-section templates (Croatian headers). */
 export function templateCsv(kind: CsvKind): string {
-  if (kind === 'trucks')
-    return toCsv(TRUCKS_HEADER, [
-      ['A', 'Kamion A', 3500, 2],
-      ['B', 'Kamion B', 10000, 3],
-    ])
-  if (kind === 'locations')
-    return toCsv(LOCATIONS_HEADER, [
-      ['L0', 'Baza', '', '', '', '', 'Industrijska ulica 24, Hrušćica', 'da'],
-      ['L1', 'Gradilište Ilica', '', '', '', '', 'Ilica 10, Zagreb', ''],
-      ['L2', 'Skladište Velika Gorica', '', '', 45.7125, 16.0758, '', ''],
-    ])
-  return toCsv(CSV_HEADER, [
-    ['N01', 'M01', 800, 'L0', 'L1', '', ''],
-    ['N02', 'M02', 2400, 'L1', 'L2', 45, ''],
-  ])
+  const ex = templateRows()
+  return toCsv(headerOf(kind, 'hr'), kind === 'trucks' ? ex.trucks : kind === 'locations' ? ex.locations : ex.orders)
+}
+
+function templateRows() {
+  return {
+    trucks: [
+      ['A', tr('data.truckName', { id: 'A' }), 3500, 2],
+      ['B', tr('data.truckName', { id: 'B' }), 10000, 3],
+    ],
+    locations: [
+      ['L0', tr('csv.exBase'), '', '', '', '', 'Industrijska ulica 24, Hrušćica', tr('csv.yes')],
+      ['L1', tr('csv.exSite'), '', '', '', '', 'Ilica 10, Zagreb', ''],
+      ['L2', tr('csv.exStore'), '', '', 45.7125, 16.0758, '', ''],
+    ],
+    orders: [
+      ['N01', 'M01', 800, 'L0', 'L1', '', ''],
+      ['N02', 'M02', 2400, 'L1', 'L2', 45, ''],
+    ],
+  }
+}
+
+// ----- one file with all three sections -----
+
+function combined(
+  trucks: (string | number | undefined)[][],
+  locations: (string | number | undefined)[][],
+  orders: (string | number | undefined)[][],
+): string {
+  const lang = getLang()
+  const i = LANG_INDEX[lang]
+  const part = (section: Section, rows: (string | number | undefined)[][]) =>
+    `#${SECTION_NAMES[section][i]}\r\n` + toCsv(headerOf(section, lang), rows)
+  return [part('trucks', trucks), part('locations', locations), part('orders', orders)].join('\r\n')
+}
+
+/** Template with all three sections and example rows (in the current language). */
+export function templateAllCsv(): string {
+  const ex = templateRows()
+  return combined(ex.trucks, ex.locations, ex.orders)
+}
+
+/** The whole data set (vehicles, locations, orders) as one CSV. */
+export function exportAllCsv(input: ProblemInput): string {
+  return combined(truckRows(input), locationRows(input, tr('csv.yes')), orderRows(input))
+}
+
+/** Which section a marker row ("#VOZILA", "#ORDERS", ...) starts, or null. */
+function sectionOf(cell: string): Section | null {
+  const m = fold(cell).replace(/^#+/, '').toUpperCase()
+  for (const s of Object.keys(SECTION_NAMES) as Section[])
+    if (SECTION_NAMES[s].some((n) => fold(n).toUpperCase() === m)) return s
+  return null
+}
+
+/**
+ * Imports one CSV with the sections #VOZILA, #LOKACIJE and #NALOZI (any of the supported
+ * languages). Every section present replaces that part of the data; a missing section keeps
+ * the current data. Orders are checked against the resulting locations. All problems are
+ * reported with their line numbers and nothing changes on error.
+ * Returns the location ids that still need geocoding (address only).
+ */
+export function importAllCsv(input: ProblemInput, text: string): { input: ProblemInput; toGeocode: string[]; sections: CsvKind[] } {
+  const rows = parseCsvRows(text)
+  if (rows.length === 0) throw new ImportError([tr('csv.empty')])
+  const parts = new Map<Section, CsvRow[]>()
+  let currentSection: Section | null = null
+  for (const r of rows) {
+    const first = r.cells[0]?.trim() ?? ''
+    if (first.startsWith('#')) {
+      const sec = sectionOf(first)
+      if (!sec) throw new ImportError([row(r.line, tr('csv.unknownSection', { name: first }))])
+      if (parts.has(sec)) throw new ImportError([row(r.line, tr('csv.sectionTwice', { name: first }))])
+      currentSection = sec
+      parts.set(sec, [])
+      continue
+    }
+    if (!currentSection) throw new ImportError([tr('csv.noSections')])
+    parts.get(currentSection)!.push(r)
+  }
+
+  const problems: string[] = []
+  const tryTable = (sec: Section, required: string[]): Table | null => {
+    const p = parts.get(sec)
+    if (!p) return null
+    try {
+      return toTable(sec, p, required)
+    } catch (e) {
+      if (e instanceof ImportError) problems.push(...e.problems)
+      else throw e
+      return null
+    }
+  }
+  const tTrucks = tryTable('trucks', ['id', 'nosivost_kg', 'max_strojeva'])
+  const tLocations = tryTable('locations', ['id'])
+  const tOrders = tryTable('orders', ['nalog', 'stroj', 'tezina_kg', 'preuzimanje', 'isporuka'])
+
+  let next: ProblemInput = { ...input }
+  let toGeocode: string[] = []
+  if (tTrucks) next.trucks = readTrucks(tTrucks, problems)
+  if (tLocations) {
+    const r = readLocations(tLocations, problems)
+    const known = new Set(r.locations.map((l) => l.id))
+    const baseId = r.baseId || (known.has(input.baseId) ? input.baseId : (r.locations[0]?.id ?? ''))
+    next = { ...next, coordinateMode: r.xy ? 'xy' : 'geo', locations: r.locations, baseId }
+    toGeocode = r.toGeocode
+  }
+  if (tOrders) {
+    const { orders, machines } = readOrders(tOrders, new Set(next.locations.map((l) => l.id)), problems)
+    next = { ...next, orders, machines }
+  } else if (tLocations) {
+    const known = new Set(next.locations.map((l) => l.id))
+    const broken = next.orders.filter((o) => !known.has(o.pickupId) || !known.has(o.deliveryId)).map((o) => o.id)
+    if (broken.length) problems.push(tr('csv.brokenOrders', { ids: broken.join(', ') }))
+  }
+  if (problems.length) throw new ImportError(problems)
+  return { input: next, toGeocode, sections: [...parts.keys()] }
 }
 
 // ---------- share link ----------
@@ -417,7 +595,7 @@ export async function decodeShare(token: string): Promise<ProblemInput> {
     return inputFromUnknown(JSON.parse(new TextDecoder().decode(bytes)))
   } catch (e) {
     if (e instanceof ImportError) throw e
-    throw new ImportError(['Link je oštećen ili nepotpun.'])
+    throw new ImportError([tr('io.badLink')])
   }
 }
 

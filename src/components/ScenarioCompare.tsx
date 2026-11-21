@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { truckColor } from '../colors'
 import { fmtHours, fmtKm } from '../format'
+import { tr } from '../i18n'
 import type { ProblemInput, Settings } from '../solver'
 import { compareScenarios, currentScenario, type Scenario } from '../solver/scenarios'
 
@@ -37,16 +38,13 @@ export function ScenarioCompare({ input, onApply }: Props) {
   return (
     <div className="card scenarios">
       <div className="assign-head">
-        <h3>Usporedba scenarija</h3>
+        <h3>{tr('sc.title')}</h3>
         <button className="btn-secondary" onClick={run} disabled={busy}>
-          {busy ? 'Računam…' : shown ? 'Izračunaj ponovno' : 'Usporedi scenarije'}
+          {busy ? tr('sc.busy') : shown ? tr('sc.again') : tr('sc.run')}
         </button>
       </div>
       {!shown && !busy && (
-        <p className="hint">
-          Isti podaci, tri tumačenja radnog dana: bez limita, limit {input.settings.maxHoursPerDay} h i limit uz obaveznu
-          pauzu. Pokazuje koliko km „košta” svako ograničenje i zašto se raspored mijenja.
-        </p>
+        <p className="hint">{tr('sc.intro', { h: input.settings.maxHoursPerDay })}</p>
       )}
       {error && <p className="hint warn-text">{error}</p>}
       {shown && (
@@ -55,7 +53,7 @@ export function ScenarioCompare({ input, onApply }: Props) {
             <div key={s.key} className={`scenario ${s.key === current ? 'current' : ''}`}>
               <div className="scenario-head">
                 <span className="scenario-label">{s.label}</span>
-                {s.key === current && <span className="tag">trenutne postavke</span>}
+                {s.key === current && <span className="tag">{tr('sc.current')}</span>}
               </div>
               <div className="scenario-km">
                 <strong>{fmtKm(s.plan.totalKm)}</strong>
@@ -67,11 +65,11 @@ export function ScenarioCompare({ input, onApply }: Props) {
                 )}
               </div>
               <div className="scenario-meta">
-                {s.plan.ordersCompleted}/{input.orders.length} naloga ·{' '}
+                {tr('sc.orders', { done: s.plan.ordersCompleted, n: input.orders.length })} ·{' '}
                 <span className={s.violations.length ? 'bad' : 'good'}>
-                  {s.violations.length ? `${s.violations.length} kršenja` : 'Sve OK'}
+                  {s.violations.length ? tr('res.violations', { n: s.violations.length }) : tr('res.allOk')}
                 </span>
-                {s.plan.solverUsed === 'heuristic' && ' · heuristika'}
+                {s.plan.solverUsed === 'heuristic' && ` · ${tr('set.solverHeuristicLabel')}`}
               </div>
               <ul className="scenario-trucks">
                 {s.plan.trucks.map((tp, i) => (
@@ -79,7 +77,7 @@ export function ScenarioCompare({ input, onApply }: Props) {
                     <span className="swatch" style={{ background: truckColor(i) }} />
                     <span className="name">{tp.truck.name}</span>
                     <span>
-                      {tp.ordersCompleted ? `${fmtKm(tp.totalKm)} · ${fmtHours(tp.totalHours)}` : 'bez naloga'}
+                      {tp.ordersCompleted ? `${fmtKm(tp.totalKm)} · ${fmtHours(tp.totalHours)}` : tr('res.noOrders')}
                     </span>
                     <small className="muted">{tp.orderIds.join(', ')}</small>
                   </li>
@@ -92,7 +90,7 @@ export function ScenarioCompare({ input, onApply }: Props) {
               </ul>
               {s.key !== current && (
                 <button className="btn-link" onClick={() => onApply(s.settings)}>
-                  Primijeni ovaj scenarij
+                  {tr('sc.apply')}
                 </button>
               )}
             </div>

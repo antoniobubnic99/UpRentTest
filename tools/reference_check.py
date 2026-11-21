@@ -69,6 +69,26 @@ def solve(time_limit, break_h=0.0):
     return best
 
 
+def solve_balanced(extra_pct, break_h=0.0):
+    """Even workload: among plans within the 9 h limit and at most +extra_pct % km of the
+    minimum, the shortest longest working day; then the fewest km. Plain enumeration of all
+    A/B splits (independent of the TypeScript binary search)."""
+    plans = []
+    for mask in range(32):
+        a = tuple(i for i in range(5) if mask >> i & 1)
+        b = tuple(i for i in range(10) if i not in a)
+        ka, ra = best_route(a, *TRUCK_A)
+        kb, rb = best_route(b, *TRUCK_B)
+        ha, hb = hours(ka, len(a), break_h), hours(kb, len(b), break_h)
+        if ha > MAX_H or hb > MAX_H:
+            continue
+        plans.append((round(ka + kb, 1), max(ha, hb), a, round(ka, 1), ra, ha, b, round(kb, 1), rb, hb))
+    bound = min(p[0] for p in plans) * (1 + extra_pct / 100) + 1e-9
+    allowed = [p for p in plans if p[0] <= bound]
+    longest = min(p[1] for p in allowed)
+    return min((p for p in allowed if p[1] <= longest + 1e-9), key=lambda p: p[0])
+
+
 if __name__ == "__main__":
     for label, limit, brk in [
         ("bez limita", False, 0.0),
@@ -79,3 +99,9 @@ if __name__ == "__main__":
         print(f"== {label}: {total} km")
         print(f"   A {[f'N{i + 1:02d}' for i in a]} {ka} km, {hours(ka, len(a), brk):.2f} h: {' '.join(ra)}")
         print(f"   B {[f'N{i + 1:02d}' for i in b]} {kb} km, {hours(kb, len(b), brk):.2f} h: {' '.join(rb)}")
+
+    for pct in (10, 100):
+        total, longest, a, ka, ra, ha, b, kb, rb, hb = solve_balanced(pct)
+        print(f"== ravnomjerna raspodjela (najvise +{pct} % km): {total} km, najdulji dan {round(longest * 60)} min")
+        print(f"   A {[f'N{i + 1:02d}' for i in a]} {ka} km, {round(ha * 60)} min: {' '.join(ra)}")
+        print(f"   B {[f'N{i + 1:02d}' for i in b]} {kb} km, {round(hb * 60)} min: {' '.join(rb)}")

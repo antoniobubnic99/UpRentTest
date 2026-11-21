@@ -1,5 +1,6 @@
-import { deciToKm, distanceOptions, legDeciKm } from './distance'
-import { orderHandlingMinutes, routeTime, withinLimit } from './time'
+import { locale, tr } from '../i18n'
+import { deciToKm, distanceOptions, legDeciKm, legSeconds, usesLegTimes } from './distance'
+import { orderHandlingMinutes, routeTimeFromDrive, withinLimit, type RouteTime } from './time'
 import type { ProblemInput, RouteStep, Settings, Truck, TruckPlan } from './types'
 
 /**
@@ -31,7 +32,22 @@ export interface Prepared {
   locIds: string[]
   /** dist[a][b] in deci-km */
   dist: number[][]
+  /** sec[a][b]: driving time in whole seconds (per relation or at the average speed) */
+  sec: number[][]
+  /** true = driving time per relation from the road service (not proportional to km) */
+  legTimes: boolean
   base: number
+}
+
+/** Driving hours of a route from its total deci-km and total seconds. */
+export function driveHoursOf(p: Prepared, deci: number, sec: number): number {
+  // At the average speed, keep the exact km / speed (identical to the task's definition).
+  return p.legTimes ? sec / 3600 : deciToKm(deci) / p.settings.speedKmh
+}
+
+/** Working time of a route from its totals. */
+export function timeOf(p: Prepared, deci: number, sec: number, handlingMinutes: number, hasOrders: boolean): RouteTime {
+  return routeTimeFromDrive(driveHoursOf(p, deci, sec), handlingMinutes, hasOrders, p.settings)
 }
 
 export function popcount(x: number): number {
@@ -76,7 +92,21 @@ export function prepare(input: ProblemInput): Prepared {
   const opts = distanceOptions(input)
   const locs = locIds.map((id) => byId.get(id)!)
   const dist = locs.map((a) => locs.map((b) => legDeciKm(a, b, opts)))
-  return { input, settings, orders, locIds, dist, base: 0 }
+  const sec = locs.map((a, i) => locs.map((b, j) => legSeconds(a, b, dist[i][j] / 10, opts)))
+  return { input, settings, orders, locIds, dist, sec, legTimes: usesLegTimes(input), base: 0 }
+}
+
+/** Driving seconds of a route given as an action sequence (base -> ... -> base). */
+export function routeSec(p: Prepared, actions: number[]): number {
+  let loc = p.base
+  let total = 0
+  for (const a of actions) {
+    const o = p.orders[a >> 1]
+    const next = a & 1 ? o.delivery : o.pickup
+    total += p.sec[loc][next]
+    loc = next
+  }
+  return total + p.sec[loc][p.base]
 }
 
 /** Distance (deci-km) of a route given as an action sequence, including leaving and returning to the base. */
@@ -98,7 +128,7 @@ export function routeDeci(p: Prepared, actions: number[]): number {
  * route's working time without the break; it does not change distances.
  */
 export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): TruckPlan {
-  const { settings: s, orders, dist, locIds, base } = p
+  const { settings: s, orders, dist, sec, locIds, base } = p
   const steps: RouteStep[] = []
   let loc = base
   let cumDeci = 0
@@ -106,6 +136,8 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
   let loadCount = 0
   let clock = 0
   let handlingMin = 0
+  let secTotal = 0
+  const legH = (from: number, to: number) => (p.legTimes ? sec[from][to] / 3600 : deciToKm(dist[from][to]) / s.speedKmh)
 
   steps.push({
     seq: 0,
@@ -118,6 +150,7 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
     arrivalHours: 0,
     departureHours: 0,
     cumulativeHours: 0,
+    legHours: 0,
   })
 
   for (const a of actions) {
@@ -126,7 +159,9 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
     const next = isDelivery ? order.delivery : order.pickup
     const leg = dist[loc][next]
     cumDeci += leg
-    const arrival = clock + deciToKm(leg) / s.speedKmh
+    const legHours = legH(loc, next)
+    secTotal += sec[loc][next]
+    const arrival = clock + legHours
     const minutes = isDelivery ? order.deliveryMinutes : order.pickupMinutes
     handlingMin += minutes
     clock = arrival + minutes / 60
@@ -150,13 +185,16 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
       arrivalHours: arrival,
       departureHours: clock,
       cumulativeHours: clock,
+      legHours,
     })
     loc = next
   }
 
   const back = dist[loc][base]
   cumDeci += back
-  const backArrival = clock + deciToKm(back) / s.speedKmh
+  const backHours = legH(loc, base)
+  secTotal += sec[loc][base]
+  const backArrival = clock + backHours
   steps.push({
     seq: steps.length,
     locationId: locIds[base],
@@ -168,10 +206,11 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
     arrivalHours: backArrival,
     departureHours: backArrival,
     cumulativeHours: backArrival,
+    legHours: backHours,
   })
 
   const totalKm = deciToKm(cumDeci)
-  const time = routeTime(totalKm, handlingMin, actions.length > 0, s)
+  const time = timeOf(p, cumDeci, secTotal, handlingMin, actions.length > 0)
 
   if (time.breakHours > 0) {
     const half = backArrival / 2
@@ -189,6 +228,7 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
       arrivalHours: prev.departureHours,
       departureHours: prev.departureHours + time.breakHours,
       cumulativeHours: prev.departureHours + time.breakHours,
+      legHours: 0,
     })
     for (let i = at + 2; i < steps.length; i++) {
       steps[i].arrivalHours += time.breakHours
@@ -214,7 +254,7 @@ export function buildTruckPlan(p: Prepared, truck: Truck, actions: number[]): Tr
 }
 
 function formatKg(kg: number): string {
-  return `${kg.toLocaleString('hr-HR')} kg`
+  return `${kg.toLocaleString(locale())} kg`
 }
 
 /** Distance (deci-km) and feasibility of serving a single order alone with a truck. */
@@ -222,7 +262,8 @@ export function singleOrderCheck(p: Prepared, truck: Truck, i: number): { deci: 
   const o = p.orders[i]
   if (o.weightKg > truck.capacityKg || truck.maxItems < 1) return { deci: Infinity, ok: false, hours: Infinity }
   const deci = p.dist[p.base][o.pickup] + p.dist[o.pickup][o.delivery] + p.dist[o.delivery][p.base]
-  const t = routeTime(deciToKm(deci), o.handlingMinutes, true, p.settings)
+  const sec = p.sec[p.base][o.pickup] + p.sec[o.pickup][o.delivery] + p.sec[o.delivery][p.base]
+  const t = timeOf(p, deci, sec, o.handlingMinutes, true)
   return { deci, ok: withinLimit(t, p.settings), hours: t.limitedHours }
 }
 
@@ -232,15 +273,15 @@ export function explainUnassigned(p: Prepared, i: number, served: number, solver
   const order = orders[i]
   const maxCapacity = Math.max(...input.trucks.map((t) => t.capacityKg))
   if (order.weightKg > maxCapacity) {
-    return `Stroj ${order.machineId} (${formatKg(order.weightKg)}) teži je od nosivosti svih kamiona (najveća ${formatKg(maxCapacity)}).`
+    return tr('why.tooHeavy', { machine: order.machineId, kg: formatKg(order.weightKg), max: formatKg(maxCapacity) })
   }
   const checks = input.trucks.map((t) => singleOrderCheck(p, t, i))
   if (!checks.some((c) => c.ok)) {
     const shortest = Math.min(...checks.map((c) => c.hours))
-    return `Nalog ne stane u radni dan ni kad ga kamion vozi sam (najmanje ${shortest.toFixed(2)} h, limit ${input.settings.maxHoursPerDay} h).`
+    return tr('why.tooLong', { hours: shortest.toLocaleString(locale(), { maximumFractionDigits: 2, minimumFractionDigits: 2 }), limit: input.settings.maxHoursPerDay })
   }
   if (solver === 'heuristic') {
-    return `Zbog dnevnog limita od ${input.settings.maxHoursPerDay} h heuristika nije našla mjesto za ovaj nalog uz ostalih ${served} izvršenih naloga (heuristika ne jamči optimum; za ≤ 12 naloga koristi egzaktni solver).`
+    return tr('why.heuristic', { limit: input.settings.maxHoursPerDay, served })
   }
-  return `Zbog dnevnog limita od ${input.settings.maxHoursPerDay} h kamioni mogu izvršiti najviše ${served} od ${orders.length} naloga; ovaj nalog je izostavljen jer optimalni raspored s najmanje km ne uključuje njega.`
+  return tr('why.exact', { limit: input.settings.maxHoursPerDay, served, total: orders.length })
 }

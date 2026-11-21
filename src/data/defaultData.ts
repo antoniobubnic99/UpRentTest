@@ -11,6 +11,10 @@ export const defaultSettings: Settings = {
   solverMode: 'auto',
   roadFactor: 1.3,
   distanceSource: 'road',
+  travelTimeSource: 'road',
+  truckMaxSpeedKmh: 80,
+  objective: 'km',
+  balanceMaxExtraPct: 10,
 }
 
 /** Input data exactly as given in the UP RENT task description. */

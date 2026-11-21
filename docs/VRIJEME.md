@@ -39,7 +39,16 @@ Predviđeno trajanje zadatka: **6 h**.
 | 20.11.2026. | 21:09–21:17 | 0 h 08 min | Rute po cestama (OSRM), bolja pretraga adresa, „Otvori u Google kartama”, CSV predlošci i uvoz vozila i lokacija |
 | | | **0 h 23 min** | |
 
-**Ukupno (faze 1–3): ≈ 2 h 49 min**
+## Faza 4: dorade nakon pregleda
+
+| Datum | Od–do | Trajanje | Aktivnost |
+|---|---|---|---|
+| 21.11.2026. | 07:41–07:55 | 0 h 14 min | Brzina po relaciji (OSRM) i ravnomjerna raspodjela u solveru, s testovima i Python provjerom |
+| 21.11.2026. | 07:55–08:10 | 0 h 15 min | Jedan CSV predložak, strelice i prikaz preko cijelog ekrana, nalozi (ista lokacija, žuto označavanje), vremenska linija, brojevi na osima, prijevodi na EN, FR i DE |
+| 21.11.2026. | 08:10–08:20 | 0 h 10 min | Vizualna provjera na tri jezika i na mobitelu, ispravci, dokumentacija |
+| | | **0 h 39 min** | |
+
+**Ukupno (faze 1–4): ≈ 3 h 28 min**
 
 ## Napomena
 
