@@ -51,7 +51,7 @@ Predviđeno trajanje zadatka: **6 h**.
 | 21.11.2026. | 09:31–09:50 | 0 h 19 min | Sigurnost (zaglavlja, ograničenja uvoza, upozorenje uz link, ovisnosti), sređivanje dokumentacije, push, priprema predaje |
 | | | **1 h 18 min** | |
 
-**Ukupno (faze 1–4): ≈ 4 h 07 min**
+**Ukupno (faze 1–4): oko 4 h**
 
 ## Napomena
 
