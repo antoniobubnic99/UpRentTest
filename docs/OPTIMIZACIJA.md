@@ -241,6 +241,8 @@ Jedna prosječna brzina ne opisuje stvarnost: autocesta je brža od gradske dion
 
 Primjer (OSRM, 21.11.2026.): Zagreb – Karlovac, centar – centar, 55,1 km za 48 min ≈ **69 km/h**.
 
+Provjereno live (21.11.2026., primjer „okolica Zagreba”): brzine dionica od 47 do 69 km/h, ukupno 505,6 km, 10/10 naloga, „Sve OK”. Uz prosječnih 60 km/h isti primjer daje 453,4 km: stvarna vremena su sporija, pa limit od 9 h tjera na drukčiju, dulju raspodjelu. Za dio podskupova korištena je najbrža ruta, i aplikacija to javlja.
+
 U **koordinatnom sustavu iz zadatka** nema cesta, pa se i dalje koristi prosječna brzina (60 km/h). Zato podaci iz zadatka i dalje daju 182,2 / 200,1 / 217,0 km. Ista prosječna brzina ostaje i kao rezerva ako OSRM ne vrati vremena, a može se odabrati i ručno (*Prosječna brzina*).
 
 **Utjecaj na egzaktnost.** S prosječnom brzinom vrijeme je proporcionalno km, pa je najkraća ruta podskupa ujedno i najbrža i DP ostaje egzaktan. S vremenom po relaciji to više ne vrijedi: dulja ruta može biti brža. Solver to rješava ovako:

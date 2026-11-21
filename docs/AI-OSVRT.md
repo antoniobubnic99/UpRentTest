@@ -103,6 +103,8 @@ Zahtjevi: četiri jezika, strelice za zatvaranje i proširenje ulaznih podataka,
    - izbornik jezika na mobitelu prekrivao je naslov
    - KPI „Ravnomjerna raspodjela” se rezao
 
+6. **Live provjera nakon deploya (Chrome):** podaci iz zadatka daju 200,1 km i prijedlog ravnomjerne raspodjele (217,0 km); primjer na stvarnoj karti daje brzine dionica 47–69 km/h, 505,6 km i „Sve OK”.
+
 Ukupno je **201 test**, a svi prolaze.
 
 ## Zaključak
