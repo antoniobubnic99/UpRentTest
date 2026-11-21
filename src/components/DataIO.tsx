@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { moveLocation } from '../data/edit'
 import { geocode } from '../data/geocode'
-import { ImportError, exportAllCsv, exportJson, importAllCsv, importJson, shareUrl, templateAllCsv } from '../data/io'
+import { ImportError, exportJson, importAllCsv, importJson, shareUrl } from '../data/io'
 import { fmtNum } from '../format'
 import { tr } from '../i18n'
 import type { ProblemInput } from '../solver'
@@ -11,9 +11,10 @@ interface Props {
   onLoad: (next: ProblemInput) => void
 }
 
-function download(name: string, text: string, type: string) {
-  // BOM so that Excel opens the CSV as UTF-8 (č, ć, š, ž)
-  const blob = new Blob([type.includes('csv') ? '﻿' + text : text], { type })
+const XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+function download(name: string, data: string | ArrayBuffer, type: string) {
+  const blob = new Blob([data], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -23,7 +24,7 @@ function download(name: string, text: string, type: string) {
 }
 
 type Msg = { kind: 'ok' | 'error' | 'progress'; lines: string[] }
-type FileKind = 'csv' | 'json'
+type FileKind = 'table' | 'json'
 
 const stamp = () => new Date().toISOString().slice(0, 10)
 
@@ -35,7 +36,7 @@ export function DataIO({ input, onLoad }: Props) {
   const [open, setOpen] = useState(false)
   const [msg, setMsg] = useState<Msg | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
-  const [pendingKind, setPendingKind] = useState<FileKind>('csv')
+  const [pendingKind, setPendingKind] = useState<FileKind>('table')
   const empty = input.trucks.length + input.locations.length + input.orders.length === 0
 
   const pickFile = (kind: FileKind) => {
@@ -70,14 +71,18 @@ export function DataIO({ input, onLoad }: Props) {
     if (!file) return
     const kind = pendingKind
     try {
-      const text = await file.text()
+      const isXlsx = /\.xlsx$/i.test(file.name)
+      const text = isXlsx ? '' : await file.text()
       if (kind === 'json') {
         const next = importJson(text)
         onLoad(next)
         setMsg({ kind: 'ok', lines: [summary(next)] })
         return
       }
-      const { input: next, toGeocode } = importAllCsv(input, text)
+      // Excel (.xlsx) or, as before, a CSV with #sections; the Excel module loads on demand
+      const { input: next, toGeocode } = isXlsx
+        ? await (await import('../data/xlsx')).importXlsx(input, await file.arrayBuffer())
+        : importAllCsv(input, text)
       onLoad(next)
       const mode = next.coordinateMode === 'geo' ? tr('mode.geo') : tr('mode.xy')
       const head = `${summary(next)} ${tr('io.modeBase', { mode, base: next.baseId })}`
@@ -95,6 +100,17 @@ export function DataIO({ input, onLoad }: Props) {
       })
     } catch (e) {
       setMsg({ kind: 'error', lines: e instanceof ImportError ? e.problems : [String(e)] })
+    }
+  }
+
+  /** Runs an action with the Excel module, loaded on first use. */
+  const excel = async (fn: (x: typeof import('../data/xlsx')) => Promise<void>) => {
+    try {
+      setMsg({ kind: 'progress', lines: [tr('xlsx.preparing')] })
+      await fn(await import('../data/xlsx'))
+      setMsg(null)
+    } catch (e) {
+      setMsg({ kind: 'error', lines: [String(e)] })
     }
   }
 
@@ -116,23 +132,25 @@ export function DataIO({ input, onLoad }: Props) {
       </button>
       {open && (
         <div className="data-io-panel">
-          <p className="hint">{tr('io.csvHelp')}</p>
+          <p className="hint">{tr('xlsx.help')}</p>
           <div className="data-io-row">
-            <span className="data-io-label">{tr('io.csvLabel')}</span>
+            <span className="data-io-label">{tr('xlsx.label')}</span>
             <button
               className="btn-outline small"
-              onClick={() => download(`${tr('io.fileTemplate')}.csv`, templateAllCsv(), 'text/csv;charset=utf-8')}
+              onClick={() => excel(async (x) => download(`${tr('io.fileTemplate')}.xlsx`, await x.templateXlsx(), XLSX))}
             >
               {tr('io.template')}
             </button>
             <button
               className="btn-outline small"
               disabled={empty}
-              onClick={() => download(`uprent-${tr('io.fileData')}-${stamp()}.csv`, exportAllCsv(input), 'text/csv;charset=utf-8')}
+              onClick={() =>
+                excel(async (x) => download(`uprent-${tr('io.fileData')}-${stamp()}.xlsx`, await x.exportXlsx(input), XLSX))
+              }
             >
               {tr('io.download')}
             </button>
-            <button className="btn-outline small" onClick={() => pickFile('csv')} aria-label={tr('io.uploadCsvAria')}>
+            <button className="btn-outline small" onClick={() => pickFile('table')} aria-label={tr('xlsx.uploadAria')}>
               {tr('io.upload')}
             </button>
           </div>
@@ -159,7 +177,7 @@ export function DataIO({ input, onLoad }: Props) {
             ref={fileRef}
             type="file"
             data-kind={pendingKind}
-            accept={pendingKind === 'json' ? '.json,application/json' : '.csv,text/csv,text/plain'}
+            accept={pendingKind === 'json' ? '.json,application/json' : `.xlsx,${XLSX},.csv,text/csv`}
             hidden
             onChange={(e) => {
               void readFile(e.target.files?.[0])

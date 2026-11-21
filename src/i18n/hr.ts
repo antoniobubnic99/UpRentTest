@@ -483,4 +483,11 @@ export const hr = {
   'app.fullShort': 'Cijeli ekran',
   'app.splitShort': 'Podijeljeni prikaz',
   'app.fullScreenWide': 'Proširi ulazne podatke na cijeli ekran',
+  'xlsx.row': (p: { sheet: string; line: number; text: string }) => `List ${p.sheet}, red ${p.line}: ${p.text}`,
+  'xlsx.noSheets': 'Excel datoteka nema nijedan od listova Vozila, Lokacije ili Nalozi. Preuzmi predložak.',
+  'xlsx.bad': 'Datoteka nije ispravna Excel datoteka (.xlsx).',
+  'xlsx.help': 'Excel (.xlsx): predložak ima tri lista (Vozila, Lokacije, Nalozi), svaki je oblikovan kao tablica, a preuzimanje i isporuka biraju se s padajuće liste lokacija. Preuzmi ga, upiši podatke i učitaj. List kojeg nema ostaje nepromijenjen. Lokacije mogu imati samo adresu, a koordinate se onda traže automatski. Učitava se i CSV.',
+  'xlsx.label': 'Vozila, lokacije i nalozi (Excel)',
+  'xlsx.uploadAria': 'Učitaj vozila, lokacije i naloge iz Excela',
+  'xlsx.preparing': 'Pripremam Excel…',
 } as const

@@ -461,4 +461,11 @@ export const fr: Catalog = {
   'sc.same': 'Le plan ne change pas : la contrainte n’est pas active ici.',
   'sc.lost': (p) => `${p.n} ${s(p.n, 'ordre ne tient plus', 'ordres ne tiennent plus')} dans la journée de travail.`,
   'sc.busiest': (p) => `Véhicule le plus chargé : ${p.name}, ${p.h} sur ${p.limit} h.`,
+  'xlsx.row': (p) => `Feuille ${p.sheet}, ligne ${p.line} : ${p.text}`,
+  'xlsx.noSheets': 'Le fichier Excel ne contient aucune des feuilles Véhicules, Lieux ou Ordres. Téléchargez le modèle.',
+  'xlsx.bad': 'Le fichier n’est pas un fichier Excel valide (.xlsx).',
+  'xlsx.help': 'Excel (.xlsx) : le modèle comporte trois feuilles (Véhicules, Lieux, Ordres), chacune mise en forme comme un tableau ; l’enlèvement et la livraison se choisissent dans une liste déroulante des lieux. Téléchargez-le, remplissez-le et chargez-le. Une feuille absente reste inchangée. Un lieu peut n’avoir qu’une adresse ; les coordonnées sont alors recherchées automatiquement. Le CSV est aussi accepté.',
+  'xlsx.label': 'Véhicules, lieux et ordres (Excel)',
+  'xlsx.uploadAria': 'Charger véhicules, lieux et ordres depuis Excel',
+  'xlsx.preparing': 'Préparation du fichier Excel…',
 }

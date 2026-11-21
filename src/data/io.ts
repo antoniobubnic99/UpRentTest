@@ -140,11 +140,11 @@ export function importJson(text: string): ProblemInput {
 // The single-section functions (vehicles / locations / orders) are kept for the tests and as
 // building blocks.
 
-type Section = 'trucks' | 'locations' | 'orders'
+export type Section = 'trucks' | 'locations' | 'orders'
 export type CsvKind = Section
 
 /** Column ids (canonical = Croatian) with their names in hr / en / fr / de. */
-const COLUMNS: Record<Section, [string, string, string, string][]> = {
+export const COLUMNS: Record<Section, [string, string, string, string][]> = {
   trucks: [
     ['id', 'id', 'id', 'id'],
     ['naziv', 'name', 'nom', 'bezeichnung'],
@@ -171,22 +171,22 @@ const COLUMNS: Record<Section, [string, string, string, string][]> = {
     ['istovar_min', 'unloading_min', 'dechargement_min', 'entladen_min'],
   ],
 }
-const SECTION_NAMES: Record<Section, [string, string, string, string]> = {
+export const SECTION_NAMES: Record<Section, [string, string, string, string]> = {
   trucks: ['VOZILA', 'VEHICLES', 'VEHICULES', 'FAHRZEUGE'],
   locations: ['LOKACIJE', 'LOCATIONS', 'LIEUX', 'STANDORTE'],
   orders: ['NALOZI', 'ORDERS', 'ORDRES', 'AUFTRAEGE'],
 }
-const LANG_INDEX: Record<string, number> = { hr: 0, en: 1, fr: 2, de: 3 }
+export const LANG_INDEX: Record<string, number> = { hr: 0, en: 1, fr: 2, de: 3 }
 
 const fold = (s: string) =>
   s
     .trim()
     .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
     .replace(/ä/g, 'ae')
     .replace(/ö/g, 'oe')
     .replace(/ü/g, 'ue')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/\s+/g, '_')
 
 /** Canonical column id for a header cell in any supported language, or the folded cell. */
@@ -199,7 +199,7 @@ function canonical(section: Section, cell: string): string {
 /** Name of a column in the current language. */
 const colName = (section: Section, id: string) => COLUMNS[section].find((c) => c[0] === id)![LANG_INDEX[getLang()]]
 
-const headerOf = (section: Section, lang = getLang()) => COLUMNS[section].map((c) => c[LANG_INDEX[lang]])
+export const headerOf = (section: Section, lang = getLang()) => COLUMNS[section].map((c) => c[LANG_INDEX[lang]])
 
 export const CSV_HEADER = COLUMNS.orders.map((c) => c[0])
 export const TRUCKS_HEADER = COLUMNS.trucks.map((c) => c[0])
@@ -214,9 +214,11 @@ function toCsv(header: string[], rows: (string | number | undefined)[][]): strin
   return [header.join(';'), ...rows.map((r) => r.map(csvCell).join(';'))].join('\r\n') + '\r\n'
 }
 
-interface CsvRow {
-  /** 1-based line number in the file */
+export interface CsvRow {
+  /** 1-based line number in the file (or row number in the Excel sheet) */
   line: number
+  /** Excel sheet name, for error messages */
+  sheet?: string
   cells: string[]
 }
 
@@ -269,7 +271,7 @@ export function parseCsv(text: string): string[][] {
 
 const parseNumber = (s: string) => Number(s.trim().replace(/\s/g, '').replace(',', '.'))
 
-type Table = { line: number; get: (name: string) => string }[]
+type Table = { line: number; sheet?: string; get: (name: string) => string }[]
 
 /** Header row + data rows of one section; checks the required columns. */
 function toTable(section: Section, rows: CsvRow[], required: string[]): Table {
@@ -286,6 +288,7 @@ function toTable(section: Section, rows: CsvRow[], required: string[]): Table {
     ])
   return rows.slice(1).map((r) => ({
     line: r.line,
+    sheet: r.sheet,
     get: (name: string) => {
       const c = header.indexOf(name)
       return c >= 0 ? (r.cells[c] ?? '').trim() : ''
@@ -293,17 +296,18 @@ function toTable(section: Section, rows: CsvRow[], required: string[]): Table {
   }))
 }
 
-const row = (line: number, text: string) => tr('csv.row', { line, text })
+const row = (line: number, sheet: string | undefined, text: string) =>
+  sheet ? tr('xlsx.row', { sheet, line, text }) : tr('csv.row', { line, text })
 const YES = new Set(['da', 'd', 'x', '1', 'yes', 'y', 'true', 'oui', 'o', 'ja', 'j'])
 
 function readTrucks(t: Table, problems: string[]): Truck[] {
-  const trucks: Truck[] = t.map(({ line, get }) => {
+  const trucks: Truck[] = t.map(({ line, sheet, get }) => {
     const id = get('id')
     const capacityKg = parseNumber(get('nosivost_kg'))
     const maxItems = parseNumber(get('max_strojeva'))
-    if (!id) problems.push(row(line, tr('csv.noTruckId')))
-    if (!(capacityKg > 0)) problems.push(row(line, tr('csv.capacity')))
-    if (!(Number.isInteger(maxItems) && maxItems >= 1)) problems.push(row(line, tr('csv.maxItems')))
+    if (!id) problems.push(row(line, sheet, tr('csv.noTruckId')))
+    if (!(capacityKg > 0)) problems.push(row(line, sheet, tr('csv.capacity')))
+    if (!(Number.isInteger(maxItems) && maxItems >= 1)) problems.push(row(line, sheet, tr('csv.maxItems')))
     return { id, name: get('naziv') || tr('data.truckName', { id }), capacityKg, maxItems }
   })
   const ids = trucks.map((x) => x.id)
@@ -317,18 +321,18 @@ function readLocations(t: Table, problems: string[]) {
   const xy = t.some((r) => r.get('x_km') !== '' || r.get('y_km') !== '')
   const toGeocode: string[] = []
   let baseId = ''
-  const locations: Location[] = t.map(({ line, get }) => {
+  const locations: Location[] = t.map(({ line, sheet, get }) => {
     const id = get('id')
-    if (!id) problems.push(row(line, tr('csv.noLocationId')))
+    if (!id) problems.push(row(line, sheet, tr('csv.noLocationId')))
     const loc: Location = { id, name: get('naziv') || id }
     if (YES.has(fold(get('baza')))) {
-      if (baseId) problems.push(row(line, tr('csv.twoBases', { base: baseId })))
+      if (baseId) problems.push(row(line, sheet, tr('csv.twoBases', { base: baseId })))
       else baseId = id
     }
     if (xy) {
       loc.x = parseNumber(get('x_km'))
       loc.y = parseNumber(get('y_km'))
-      if (!Number.isFinite(loc.x) || !Number.isFinite(loc.y)) problems.push(row(line, tr('csv.xy')))
+      if (!Number.isFinite(loc.x) || !Number.isFinite(loc.y)) problems.push(row(line, sheet, tr('csv.xy')))
     } else {
       const lat = get('lat')
       const lon = get('lon')
@@ -337,12 +341,12 @@ function readLocations(t: Table, problems: string[]) {
       if (lat !== '' || lon !== '') {
         loc.lat = parseNumber(lat)
         loc.lon = parseNumber(lon)
-        if (!(Math.abs(loc.lat) <= 90 && Math.abs(loc.lon) <= 180)) problems.push(row(line, tr('csv.latLon')))
+        if (!(Math.abs(loc.lat) <= 90 && Math.abs(loc.lon) <= 180)) problems.push(row(line, sheet, tr('csv.latLon')))
       } else if (address) {
         loc.lat = NaN
         loc.lon = NaN
         toGeocode.push(id)
-      } else problems.push(row(line, tr('csv.noPosition')))
+      } else problems.push(row(line, sheet, tr('csv.noPosition')))
     }
     return loc
   })
@@ -356,17 +360,17 @@ function readLocations(t: Table, problems: string[]) {
 function readOrders(t: Table, locIds: Set<string>, problems: string[]) {
   const orders: Order[] = []
   const machines: Machine[] = []
-  for (const { line, get } of t) {
+  for (const { line, sheet, get } of t) {
     const id = get('nalog')
     const machineId = get('stroj')
     const weight = parseNumber(get('tezina_kg'))
     const pickupId = get('preuzimanje')
     const deliveryId = get('isporuka')
-    if (!id || !machineId) problems.push(row(line, tr('csv.noOrderId')))
-    if (!(weight > 0)) problems.push(row(line, tr('csv.weight')))
-    if (!locIds.has(pickupId)) problems.push(row(line, tr('csv.noPickup', { loc: pickupId })))
-    if (!locIds.has(deliveryId)) problems.push(row(line, tr('csv.noDelivery', { loc: deliveryId })))
-    if (pickupId && pickupId === deliveryId) problems.push(row(line, tr('csv.sameLocation', { loc: pickupId })))
+    if (!id || !machineId) problems.push(row(line, sheet, tr('csv.noOrderId')))
+    if (!(weight > 0)) problems.push(row(line, sheet, tr('csv.weight')))
+    if (!locIds.has(pickupId)) problems.push(row(line, sheet, tr('csv.noPickup', { loc: pickupId })))
+    if (!locIds.has(deliveryId)) problems.push(row(line, sheet, tr('csv.noDelivery', { loc: deliveryId })))
+    if (pickupId && pickupId === deliveryId) problems.push(row(line, sheet, tr('csv.sameLocation', { loc: pickupId })))
     const order: Order = { id, machineId, pickupId, deliveryId }
     for (const [key, name] of [
       ['pickupMinutes', 'utovar_min'],
@@ -375,7 +379,7 @@ function readOrders(t: Table, locIds: Set<string>, problems: string[]) {
       const v = get(name)
       if (v !== '') {
         const n = parseNumber(v)
-        if (!(n >= 0)) problems.push(row(line, tr('csv.minutes', { col: colName('orders', name) })))
+        if (!(n >= 0)) problems.push(row(line, sheet, tr('csv.minutes', { col: colName('orders', name) })))
         order[key] = n
       }
     }
@@ -431,10 +435,10 @@ export function exportLocationsCsv(input: ProblemInput): string {
   return toCsv(headerOf('locations', 'hr'), locationRows(input, 'da'))
 }
 
-const truckRows = (input: ProblemInput) => input.trucks.map((t) => [t.id, t.name, t.capacityKg, t.maxItems])
-const locationRows = (input: ProblemInput, yes: string) =>
+export const truckRows = (input: ProblemInput) => input.trucks.map((t) => [t.id, t.name, t.capacityKg, t.maxItems])
+export const locationRows = (input: ProblemInput, yes: string) =>
   input.locations.map((l) => [l.id, l.name, l.x, l.y, l.lat, l.lon, l.address, l.id === input.baseId ? yes : ''])
-const orderRows = (input: ProblemInput) => {
+export const orderRows = (input: ProblemInput) => {
   const weight = new Map(input.machines.map((m) => [m.id, m.weightKg]))
   return input.orders.map((o) => [o.id, o.machineId, weight.get(o.machineId), o.pickupId, o.deliveryId, o.pickupMinutes, o.deliveryMinutes])
 }
@@ -445,7 +449,7 @@ export function templateCsv(kind: CsvKind): string {
   return toCsv(headerOf(kind, 'hr'), kind === 'trucks' ? ex.trucks : kind === 'locations' ? ex.locations : ex.orders)
 }
 
-function templateRows() {
+export function templateRows() {
   return {
     trucks: [
       ['A', tr('data.truckName', { id: 'A' }), 3500, 2],
@@ -489,7 +493,7 @@ export function exportAllCsv(input: ProblemInput): string {
 }
 
 /** Which section a marker row ("#VOZILA", "#ORDERS", ...) starts, or null. */
-function sectionOf(cell: string): Section | null {
+export function sectionOf(cell: string): Section | null {
   const m = fold(cell).replace(/^#+/, '').toUpperCase()
   for (const s of Object.keys(SECTION_NAMES) as Section[])
     if (SECTION_NAMES[s].some((n) => fold(n).toUpperCase() === m)) return s
@@ -512,8 +516,8 @@ export function importAllCsv(input: ProblemInput, text: string): { input: Proble
     const first = r.cells[0]?.trim() ?? ''
     if (first.startsWith('#')) {
       const sec = sectionOf(first)
-      if (!sec) throw new ImportError([row(r.line, tr('csv.unknownSection', { name: first }))])
-      if (parts.has(sec)) throw new ImportError([row(r.line, tr('csv.sectionTwice', { name: first }))])
+      if (!sec) throw new ImportError([row(r.line, undefined, tr('csv.unknownSection', { name: first }))])
+      if (parts.has(sec)) throw new ImportError([row(r.line, undefined, tr('csv.sectionTwice', { name: first }))])
       currentSection = sec
       parts.set(sec, [])
       continue
@@ -522,6 +526,17 @@ export function importAllCsv(input: ProblemInput, text: string): { input: Proble
     parts.get(currentSection)!.push(r)
   }
 
+  return importSections(input, parts)
+}
+
+/**
+ * Applies the sections that are present (vehicles, locations, orders) to the data set.
+ * Shared by the CSV and the Excel import; nothing changes when there is any problem.
+ */
+export function importSections(
+  input: ProblemInput,
+  parts: Map<Section, CsvRow[]>,
+): { input: ProblemInput; toGeocode: string[]; sections: CsvKind[] } {
   const problems: string[] = []
   const tryTable = (sec: Section, required: string[]): Table | null => {
     const p = parts.get(sec)

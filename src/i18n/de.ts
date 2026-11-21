@@ -455,4 +455,11 @@ export const de: Catalog = {
   'sc.same': 'Der Plan ändert sich nicht: die Beschränkung greift hier nicht.',
   'sc.lost': (p) => `${p.n} ${s(p.n, 'Auftrag passt', 'Aufträge passen')} nicht mehr in den Arbeitstag.`,
   'sc.busiest': (p) => `Am stärksten ausgelastet: ${p.name}, ${p.h} von ${p.limit} h.`,
+  'xlsx.row': (p) => `Blatt ${p.sheet}, Zeile ${p.line}: ${p.text}`,
+  'xlsx.noSheets': 'Die Excel-Datei enthält keines der Blätter Fahrzeuge, Standorte oder Aufträge. Vorlage herunterladen.',
+  'xlsx.bad': 'Die Datei ist keine gültige Excel-Datei (.xlsx).',
+  'xlsx.help': 'Excel (.xlsx): Die Vorlage hat drei Blätter (Fahrzeuge, Standorte, Aufträge), jedes als Tabelle formatiert; Abholung und Lieferung werden aus einer Dropdown-Liste der Standorte gewählt. Herunterladen, ausfüllen und laden. Ein fehlendes Blatt bleibt unverändert. Standorte dürfen nur eine Adresse haben; die Koordinaten werden dann automatisch gesucht. CSV wird ebenfalls angenommen.',
+  'xlsx.label': 'Fahrzeuge, Standorte und Aufträge (Excel)',
+  'xlsx.uploadAria': 'Fahrzeuge, Standorte und Aufträge aus Excel laden',
+  'xlsx.preparing': 'Excel wird vorbereitet…',
 }

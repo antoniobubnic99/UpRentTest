@@ -46,9 +46,11 @@ Predviđeno trajanje zadatka: **6 h**.
 | 21.11.2026. | 07:41–07:55 | 0 h 14 min | Brzina po relaciji (OSRM) i ravnomjerna raspodjela u solveru, s testovima i Python provjerom |
 | 21.11.2026. | 07:55–08:10 | 0 h 15 min | Jedan CSV predložak, strelice i prikaz preko cijelog ekrana, nalozi (ista lokacija, žuto označavanje), vremenska linija, brojevi na osima, prijevodi na EN, FR i DE |
 | 21.11.2026. | 08:10–08:20 | 0 h 10 min | Vizualna provjera na tri jezika i na mobitelu, ispravci, dokumentacija |
-| | | **0 h 39 min** | |
+| 21.11.2026. | 08:17–08:22 | 0 h 05 min | Push, Vercel deploy, live provjera (brzina po relaciji 47–69 km/h) |
+| 21.11.2026. | 08:25–08:40 | 0 h 15 min | Excel predložak: list po sekciji, oblikovan kao tablica, padajuće liste; testovi i provjera |
+| | | **0 h 59 min** | |
 
-**Ukupno (faze 1–4): ≈ 3 h 28 min**
+**Ukupno (faze 1–4): ≈ 3 h 48 min**
 
 ## Napomena
 

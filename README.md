@@ -81,12 +81,15 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 - **Raspored ekrana:** ulazni podaci i ograničenja su u lijevom izborniku iza hamburgera, a rezultati desno. Na mobitelu se izbornik otvara preko sadržaja.
 - **Usporedba scenarija:** isti podaci u tri tumačenja radnog dana jedan pored drugog: bez limita 182,2 km, limit 9 h 200,1 km, limit uz pauzu 217,0 km. Objašnjenje je generirano iz samih planova: koji nalozi prelaze na koje vozilo, koliko km „košta” ograničenje i zašto najkraći plan nije izvediv. Svaki scenarij se može primijeniti jednim klikom.
 - **Ispis plana za vozača:** jedna A4 stranica po vozilu, s redoslijedom, satnicom (početak u 07:00), lokacijama, radnjama, strojevima, teretom, stupcem za kvačicu i mjestom za potpis. U pregledniku se sprema kao PDF ([primjer](docs/primjer-plan-voznje.pdf)).
-- **Uvoz i izvoz preko Excela (CSV), jedna datoteka** s tri sekcije (`#VOZILA`, `#LOKACIJE`, `#NALOZI`):
+- **Uvoz i izvoz preko Excela (.xlsx):** jedna datoteka, **jedan list po sekciji** (Vozila, Lokacije, Nalozi):
+  - svaki list je **Excel tablica** (crno-žuto zaglavlje, filteri, zamrznut prvi red, širine stupaca, format brojeva)
+  - preuzimanje i isporuka biraju se s **padajuće liste lokacija**, a Excel odmah provjerava brojeve (nosivost, težina, minute)
   - **predložak za preuzimanje**: upišeš podatke i učitaš datoteku
-  - sekcija koje nema u datoteci ostaje nepromijenjena
-  - zaglavlja i nazivi sekcija prihvaćaju se na sva četiri jezika
+  - list kojeg nema ostaje nepromijenjen; nazivi listova i stupaca prihvaćaju se na sva četiri jezika
   - lokacije mogu imati samo adresu, a koordinate se traže automatski
-  - uvoz se provjerava i javlja greške s brojem retka u datoteci
+  - uvoz se provjerava i javlja greške s nazivom lista i brojem retka
+  - i dalje se učitava i CSV sa sekcijama `#VOZILA`, `#LOKACIJE`, `#NALOZI`
+  - biblioteka `exceljs` učitava se tek kad se Excel koristi, pa ne usporava otvaranje stranice
 - **Cijeli skup kao JSON** i **link za dijeljenje** koji sadrži podatke u samom URL-u (komprimirano, ništa se ne šalje na server).
 - **Prilagođeno mobitelu:** koraci rute kao kartice, vremenska linija preko cijele širine i polja bez zumiranja na iPhoneu.
 - **Izgled u stilu uprent.hr** (logo, boje, header), uz napomenu da je riječ o prototipu, a ne službenom proizvodu.
@@ -124,6 +127,7 @@ src/
     edit.ts                  # dodavanje/brisanje uz referencijalni integritet
     geocode.ts               # pretraga adresa (Nominatim, najviše 1 upit/s)
     io.ts                    # JSON / CSV uvoz i izvoz, predlošci, link za dijeljenje
+    xlsx.ts                  # Excel: list po sekciji, tablice, padajuće liste (exceljs, lazy)
     routing.ts               # cestovne udaljenosti i rute (OSRM)
     googleMaps.ts            # linkovi „Otvori u Google kartama”
   i18n/                      # prijevodi: hr (izvor), en, fr, de; TypeScript provjerava potpunost
@@ -134,7 +138,7 @@ docs/                        # dokumentacija za predaju
 
 ## Testovi
 
-`npm test` pokreće **201 test case** u 11 datoteka.
+`npm test` pokreće **208 test caseova** u 12 datoteka.
 
 ### Poslovna ograničenja iz zadatka (`src/solver/solver.test.ts`)
 
@@ -159,6 +163,7 @@ docs/                        # dokumentacija za predaju
 | `src/solver/scenarios.test.ts` | Usporedba scenarija: 182,2 / 200,1 / 217,0 km i generirana objašnjenja (npr. „Kamion B bi radio 9 h 42 min”) |
 | `src/data/io.test.ts` | JSON i CSV u oba smjera, Excel format (BOM, zarez, navodnici), greške s brojem retka, link za dijeljenje |
 | `src/solver/speed-and-balance.test.ts` | Ravnomjerna raspodjela: 217,0 km (A 122 min, B 495 min), 0 % = 200,1 km, bez granice 284,2 km, usporedba s brute force pretragom, heuristika unutar granice km; brzina po relaciji: OSRM vrijeme, ograničenje brzine kamiona, najbrža ruta kad najkraća ne stane u dan, Zagreb – Karlovac 69 km/h; prijedlog „slabo iskorišten” |
+| `src/data/xlsx.test.ts` | Excel: listovi Vozila / Lokacije / Nalozi, svaki kao tablica, padajuća lista lokacija, uvoz predloška, oba smjera (200,1 km), listovi na EN/FR/DE, greške s nazivom lista i retkom |
 | `src/data/csv-all.test.ts` | Jedan CSV s tri sekcije: predložak, uvoz u oba smjera (200,1 km), datoteke na EN/FR/DE, sekcija koje nema, greške s brojem retka |
 | `src/i18n/i18n.test.ts` | Svi jezici imaju sve tekstove i parametre, prijevodi nisu kopije hrvatskog, poruke solvera prate odabrani jezik |
 | `src/data/roads-and-csv.test.ts` | Cestovne udaljenosti u solveru i validatoru, rezervna zračna udaljenost, OSRM pozivi i greške, koordinate i Google Maps linkovi, oznaka kad kućni broj nije u OSM-u, CSV predlošci i uvoz vozila i lokacija |

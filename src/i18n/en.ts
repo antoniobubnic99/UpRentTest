@@ -452,4 +452,11 @@ export const en: Catalog = {
   'sc.same': 'The plan does not change: the constraint is not active here.',
   'sc.lost': (p) => `${p.n} ${s(p.n, 'order no longer fits', 'orders no longer fit')} into the working day.`,
   'sc.busiest': (p) => `Busiest vehicle: ${p.name}, ${p.h} of ${p.limit} h.`,
+  'xlsx.row': (p) => `Sheet ${p.sheet}, row ${p.line}: ${p.text}`,
+  'xlsx.noSheets': 'The Excel file has none of the sheets Vehicles, Locations or Orders. Download the template.',
+  'xlsx.bad': 'The file is not a valid Excel file (.xlsx).',
+  'xlsx.help': 'Excel (.xlsx): the template has three sheets (Vehicles, Locations, Orders), each formatted as a table; pickup and delivery are chosen from a drop-down list of locations. Download it, fill it in and load it. A missing sheet stays unchanged. Locations may have only an address; the coordinates are then looked up automatically. CSV is accepted too.',
+  'xlsx.label': 'Vehicles, locations and orders (Excel)',
+  'xlsx.uploadAria': 'Load vehicles, locations and orders from Excel',
+  'xlsx.preparing': 'Preparing Excel…',
 }
