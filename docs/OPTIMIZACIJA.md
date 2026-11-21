@@ -186,7 +186,7 @@ Javni OSRM server namijenjen je laganom korištenju, pa se rezultati spremaju u 
 - lijepljenje koordinata ili linka iz Google karata
 - povlačenje markera
 - ručni unos koordinata
-- uvoz CSV-a s adresama, koje se onda geokodiraju jedna po jedna
+- uvoz Excela (ili CSV-a) s adresama, koje se onda geokodiraju jedna po jedna
 
 Kućni brojevi postoje samo tamo gdje su upisani u OpenStreetMap. Kad broja nema, rezultat je ulica, uz napomenu da se marker povuče na točno mjesto.
 

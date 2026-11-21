@@ -157,8 +157,7 @@ export const hr = {
   'io.notFound': (p: { list: string }) =>
     `Nije pronađeno: ${p.list}. Upiši koordinate ručno ili klikni lokaciju na karti.`,
   'io.geocoding': (p: { i: number; n: number; address: string }) => `Tražim adrese ${p.i}/${p.n}: ${p.address}`,
-  'io.linkCopied': (p: { n: string }) =>
-    `Link je kopiran (${p.n} znakova). Podaci su u samom linku; ništa se ne šalje na server.`,
+  'io.linkCopied': (p: { n: string }) => `Link je kopiran (${p.n} znakova). Podaci su u samom linku i ne šalju se na server, ali ih vidi svatko tko dobije link.`,
   'io.linkFailed': (p: { why: string }) => `Link nije kopiran: ${p.why}`,
   'io.more': (p: { n: number }) => `… i još ${p.n}`,
 
@@ -490,4 +489,7 @@ export const hr = {
   'xlsx.label': 'Vozila, lokacije i nalozi (Excel)',
   'xlsx.uploadAria': 'Učitaj vozila, lokacije i naloge iz Excela',
   'xlsx.preparing': 'Pripremam Excel…',
+  'io.tooBig': (p: { mb: number; max: number }) => `Datoteka je prevelika (${p.mb} MB). Najveća dopuštena veličina je ${p.max} MB.`,
+  'io.tooManyRows': (p: { what: string; n: number; max: number }) => `Previše redaka (${p.what}: ${p.n}). Najviše je ${p.max} po sekciji.`,
+  'io.linkWarning': 'Tko god ima link, vidi sve podatke iz njega (vozila, lokacije, naloge). Podaci se ne šalju na server, ali link dijeli samo s osobama kojima smiješ pokazati te podatke.',
 } as const

@@ -35,6 +35,8 @@ python3 tools/reference_check.py
 
 Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 kamiona, 10 lokacija i 10 naloga iz zadatka, a zatim **„Optimiziraj raspored”** računa plan.
 
+Podaci iz zadatka računaju se potpuno u pregledniku, bez vanjskih servisa (euklidska udaljenost, 60 km/h), kako zadatak traži. Karte, pretraga adresa i rute po cestama koriste se samo u dodatnom načinu „Stvarna karta”.
+
 ## Funkcionalnosti
 
 ### Traženo zadatkom
@@ -64,7 +66,7 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 - **Vremenska linija** po vozilu: radni dan kao traka od blokova (vožnja s km, utovar i istovar s oznakom lokacije, pauza) na osi sa satima (početak u 07:00) i crvenom crtom dnevnog limita. Uz vozilo piše ukupno vrijeme i postotak dana. Klik na blok označava korak u tablici.
 - **Cilj optimizacije: Najmanje km / Ravnomjerna raspodjela.** Ravnomjerna raspodjela traži što kraći najduži radni dan, uz najviše +X % km u odnosu na najkraći plan (zadano 10 %), pa najmanje km. I dalje je egzaktna. Za podatke iz zadatka: kamion A vozi N01 i N04, ukupno 217,0 km (+16,9 km), A radi 122 min, B 495 min. Kad je jedno vozilo slabo iskorišteno, rezultat to sam predlaže, s gumbom „Primijeni ravnomjernu raspodjelu”.
 - **Brzina po relaciji:** na stvarnoj karti vrijeme vožnje svake dionice dolazi iz servisa za rute (npr. Zagreb – Karlovac 55,1 km za 48 min ≈ 69 km/h), a ne iz jedne prosječne brzine. Kamion na relaciji ne ide brže od 80 km/h (podesivo). Brzina svake dionice prikazana je u tablici rute.
-- **Četiri jezika:** hrvatski, engleski, francuski i njemački (izbornik u headeru, pamti se odabir). Prevedeni su i poruke solvera, upozorenja, CSV predložak i ispis za vozača.
+- **Četiri jezika:** hrvatski, engleski, francuski i njemački (izbornik u headeru, pamti se odabir). Prevedeni su i poruke solvera, upozorenja, Excel predložak i ispis za vozača.
 - **Ulazni podaci:** strelica na rubu zatvara ulazne podatke i širi rezultat, a druga ih širi preko cijelog ekrana za lakši unos (nalozi tada u više stupaca).
 - **Nalozi:** lokacija odabrana za preuzimanje ne nudi se za isporuku i obrnuto. Nalog s upozorenjem u rezultatu označen je žuto i u unosu, s razlogom ispod naloga; „Prikaži u unosu” vodi ravno na njega.
 - **Prava karta** (Leaflet + OpenStreetMap) s **rutama po cestama** (OSRM). Na stvarnoj karti optimizacija koristi **stvarne cestovne udaljenosti**. Ako servis nije dostupan, koristi se zračna udaljenost × faktor ceste (1,3) i aplikacija to javlja.
@@ -99,7 +101,7 @@ Aplikacija se otvara prazna. Gumb **„Vrati podatke iz zadatka”** učitava 2 
 | | |
 |---|---|
 | [Početni (prazni) ekran](docs/screenshots/00-pocetni-ekran.png) | [Cijela stranica s rezultatom](docs/screenshots/01-cijela-aplikacija.png) |
-| [Upozorenje: pretežak stroj](docs/screenshots/03-upozorenje-pretezak-stroj.png) | [Pauza i linija vremena (217,0 km)](docs/screenshots/04-pauza-i-linija-vremena.png) |
+| [Upozorenje: pretežak stroj](docs/screenshots/03-upozorenje-pretezak-stroj.png) | [Pauza i linija vremena, starija verzija (217,0 km)](docs/screenshots/04-pauza-i-linija-vremena.png) |
 | [Utovar po nalogu (N09: 60 min)](docs/screenshots/05-nalozi-utovar-po-nalogu.png) | [Mobitel: rezultat](docs/screenshots/06-mobitel-rezultat.png) · [izbornik](docs/screenshots/07-mobitel-izbornik.png) |
 | [Stvarna karta: primjer okolice Zagreba](docs/screenshots/08-stvarna-karta.png) | [Pretraga adrese (Nominatim)](docs/screenshots/09-pretraga-adrese.png) |
 | [Usporedba scenarija](docs/screenshots/10-usporedba-scenarija.png) | [Primjer plana vožnje (PDF)](docs/primjer-plan-voznje.pdf) |
@@ -126,7 +128,7 @@ src/
     defaultData.ts           # podaci iz zadatka, prazno stanje, primjer za kartu
     edit.ts                  # dodavanje/brisanje uz referencijalni integritet
     geocode.ts               # pretraga adresa (Nominatim, najviše 1 upit/s)
-    io.ts                    # JSON / CSV uvoz i izvoz, predlošci, link za dijeljenje
+    io.ts                    # JSON / CSV uvoz i izvoz, ograničenja uvoza, link za dijeljenje
     xlsx.ts                  # Excel: list po sekciji, tablice, padajuće liste (exceljs, lazy)
     routing.ts               # cestovne udaljenosti i rute (OSRM)
     googleMaps.ts            # linkovi „Otvori u Google kartama”
@@ -138,7 +140,7 @@ docs/                        # dokumentacija za predaju
 
 ## Testovi
 
-`npm test` pokreće **208 test caseova** u 12 datoteka.
+`npm test` pokreće **210 test caseova** u 12 datoteka.
 
 ### Poslovna ograničenja iz zadatka (`src/solver/solver.test.ts`)
 
@@ -164,9 +166,24 @@ docs/                        # dokumentacija za predaju
 | `src/data/io.test.ts` | JSON i CSV u oba smjera, Excel format (BOM, zarez, navodnici), greške s brojem retka, link za dijeljenje |
 | `src/solver/speed-and-balance.test.ts` | Ravnomjerna raspodjela: 217,0 km (A 122 min, B 495 min), 0 % = 200,1 km, bez granice 284,2 km, usporedba s brute force pretragom, heuristika unutar granice km; brzina po relaciji: OSRM vrijeme, ograničenje brzine kamiona, najbrža ruta kad najkraća ne stane u dan, Zagreb – Karlovac 69 km/h; prijedlog „slabo iskorišten” |
 | `src/data/xlsx.test.ts` | Excel: listovi Vozila / Lokacije / Nalozi, svaki kao tablica, padajuća lista lokacija, uvoz predloška, oba smjera (200,1 km), listovi na EN/FR/DE, greške s nazivom lista i retkom |
-| `src/data/csv-all.test.ts` | Jedan CSV s tri sekcije: predložak, uvoz u oba smjera (200,1 km), datoteke na EN/FR/DE, sekcija koje nema, greške s brojem retka |
+| `src/data/csv-all.test.ts` | CSV s tri sekcije: predložak, uvoz u oba smjera (200,1 km), datoteke na EN/FR/DE, sekcija koje nema, greške s brojem retka; ograničenja uvoza (5 MB, 2000 redaka po sekciji) |
 | `src/i18n/i18n.test.ts` | Svi jezici imaju sve tekstove i parametre, prijevodi nisu kopije hrvatskog, poruke solvera prate odabrani jezik |
 | `src/data/roads-and-csv.test.ts` | Cestovne udaljenosti u solveru i validatoru, rezervna zračna udaljenost, OSRM pozivi i greške, koordinate i Google Maps linkovi, oznaka kad kućni broj nije u OSM-u, CSV predlošci i uvoz vozila i lokacija |
+
+## Sigurnost i privatnost
+
+Prototip namjerno nema backend ni prijavu: ocjenjivač ga mora moći otvoriti bez lozinke, a u njemu nema stvarnih podataka. Ono što ima smisla bez servera je napravljeno:
+
+- **Podaci ostaju u pregledniku.** Ništa se ne sprema na server ni trajno u pregledniku (osim odabranog jezika).
+- **Sigurnosna zaglavlja** (`vercel.json`, ista i u `npm run preview`):
+  - Content Security Policy dopušta samo vlastiti kod te OpenStreetMap, OSRM i Nominatim, pa se ubačeni kod ne može izvršiti ni slati podatke drugamo
+  - zabrana ugrađivanja u tuđe stranice (clickjacking), HSTS, `Referrer-Policy: no-referrer`, `nosniff`, isključeni kamera, mikrofon i lokacija
+- **Unos je zaštićen:** React sam čisti tekst (nigdje se ne ubacuje sirovi HTML iz podataka), a uvoz odbija datoteke veće od 5 MB i više od 2000 redaka po sekciji, pa pokvarena ili zlonamjerna datoteka ne može zamrznuti preglednik.
+- **Link za dijeljenje** nosi podatke u dijelu URL-a iza `#`, koji preglednik ne šalje serveru. Tko ima link, vidi podatke, i aplikacija to piše uz gumb.
+- **Vanjski servisi** (samo u načinu „Stvarna karta”): OSRM prima koordinate lokacija, a Nominatim upite za adrese. Imena vozila, strojevi i nalozi ne šalju se nikamo.
+- **Ovisnosti:** `npm audit` bez ranjivosti (`uuid` unutar `exceljs` podignut na sigurnu verziju).
+
+U produkciji bi išli prijava (npr. SSO tvrtke), uloge (dispečer, vozač), baza s kontrolom pristupa i revizijskim tragom te vlastiti server za rute, kako adrese ne bi išle na javne servise.
 
 ## Dokumentacija za predaju
 

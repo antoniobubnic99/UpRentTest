@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { moveLocation } from '../data/edit'
 import { geocode } from '../data/geocode'
-import { ImportError, exportJson, importAllCsv, importJson, shareUrl } from '../data/io'
+import { ImportError, checkFileSize, exportJson, importAllCsv, importJson, shareUrl } from '../data/io'
 import { fmtNum } from '../format'
 import { tr } from '../i18n'
 import type { ProblemInput } from '../solver'
@@ -71,6 +71,7 @@ export function DataIO({ input, onLoad }: Props) {
     if (!file) return
     const kind = pendingKind
     try {
+      checkFileSize(file.size)
       const isXlsx = /\.xlsx$/i.test(file.name)
       const text = isXlsx ? '' : await file.text()
       if (kind === 'json') {
@@ -173,6 +174,7 @@ export function DataIO({ input, onLoad }: Props) {
               {tr('io.copyLink')}
             </button>
           </div>
+          <p className="hint">🔒 {tr('io.linkWarning')}</p>
           <input
             ref={fileRef}
             type="file"

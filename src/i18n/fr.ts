@@ -143,8 +143,7 @@ export const fr: Catalog = {
   'io.addressesFound': (p) => `Adresses trouvées : ${p.found}/${p.n}.`,
   'io.notFound': (p) => `Introuvable : ${p.list}. Saisissez les coordonnées ou cliquez sur le lieu dans la carte.`,
   'io.geocoding': (p) => `Recherche des adresses ${p.i}/${p.n} : ${p.address}`,
-  'io.linkCopied': (p) =>
-    `Lien copié (${p.n} caractères). Les données sont dans le lien lui-même ; rien n’est envoyé à un serveur.`,
+  'io.linkCopied': (p) => `Lien copié (${p.n} caractères). Les données sont dans le lien et ne sont pas envoyées à un serveur, mais toute personne qui reçoit le lien peut les voir.`,
   'io.linkFailed': (p) => `Le lien n’a pas été copié : ${p.why}`,
   'io.more': (p) => `… et ${p.n} de plus`,
 
@@ -468,4 +467,7 @@ export const fr: Catalog = {
   'xlsx.label': 'Véhicules, lieux et ordres (Excel)',
   'xlsx.uploadAria': 'Charger véhicules, lieux et ordres depuis Excel',
   'xlsx.preparing': 'Préparation du fichier Excel…',
+  'io.tooBig': (p) => `Le fichier est trop volumineux (${p.mb} Mo). La taille maximale est de ${p.max} Mo.`,
+  'io.tooManyRows': (p) => `Trop de lignes (${p.what} : ${p.n}). Au plus ${p.max} par section.`,
+  'io.linkWarning': 'Toute personne disposant du lien voit toutes ses données (véhicules, lieux, ordres). Rien n’est envoyé à un serveur, mais ne partagez le lien qu’avec des personnes autorisées à voir ces données.',
 }

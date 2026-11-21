@@ -140,7 +140,7 @@ export const de: Catalog = {
   'io.addressesFound': (p) => `Adressen gefunden: ${p.found}/${p.n}.`,
   'io.notFound': (p) => `Nicht gefunden: ${p.list}. Koordinaten von Hand eingeben oder den Standort in der Karte anklicken.`,
   'io.geocoding': (p) => `Suche Adressen ${p.i}/${p.n}: ${p.address}`,
-  'io.linkCopied': (p) => `Link kopiert (${p.n} Zeichen). Die Daten stecken im Link selbst; nichts wird an einen Server gesendet.`,
+  'io.linkCopied': (p) => `Link kopiert (${p.n} Zeichen). Die Daten stecken im Link und werden nicht an einen Server gesendet, aber jeder mit dem Link kann sie sehen.`,
   'io.linkFailed': (p) => `Der Link wurde nicht kopiert: ${p.why}`,
   'io.more': (p) => `… und ${p.n} weitere`,
 
@@ -462,4 +462,7 @@ export const de: Catalog = {
   'xlsx.label': 'Fahrzeuge, Standorte und Aufträge (Excel)',
   'xlsx.uploadAria': 'Fahrzeuge, Standorte und Aufträge aus Excel laden',
   'xlsx.preparing': 'Excel wird vorbereitet…',
+  'io.tooBig': (p) => `Die Datei ist zu groß (${p.mb} MB). Höchstens ${p.max} MB sind erlaubt.`,
+  'io.tooManyRows': (p) => `Zu viele Zeilen (${p.what}: ${p.n}). Höchstens ${p.max} je Abschnitt.`,
+  'io.linkWarning': 'Wer den Link hat, sieht alle Daten darin (Fahrzeuge, Standorte, Aufträge). Es wird nichts an einen Server gesendet, aber teilen Sie den Link nur mit Personen, die diese Daten sehen dürfen.',
 }

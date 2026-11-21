@@ -138,7 +138,7 @@ export const en: Catalog = {
   'io.addressesFound': (p) => `Addresses found: ${p.found}/${p.n}.`,
   'io.notFound': (p) => `Not found: ${p.list}. Enter the coordinates by hand or click the location on the map.`,
   'io.geocoding': (p) => `Looking up addresses ${p.i}/${p.n}: ${p.address}`,
-  'io.linkCopied': (p) => `Link copied (${p.n} characters). The data is inside the link; nothing is sent to a server.`,
+  'io.linkCopied': (p) => `Link copied (${p.n} characters). The data is inside the link and is not sent to a server, but anyone who gets the link can see it.`,
   'io.linkFailed': (p) => `The link was not copied: ${p.why}`,
   'io.more': (p) => `… and ${p.n} more`,
 
@@ -459,4 +459,7 @@ export const en: Catalog = {
   'xlsx.label': 'Vehicles, locations and orders (Excel)',
   'xlsx.uploadAria': 'Load vehicles, locations and orders from Excel',
   'xlsx.preparing': 'Preparing Excel…',
+  'io.tooBig': (p) => `The file is too large (${p.mb} MB). The maximum is ${p.max} MB.`,
+  'io.tooManyRows': (p) => `Too many rows (${p.what}: ${p.n}). The maximum is ${p.max} per section.`,
+  'io.linkWarning': 'Anyone with the link can see all the data in it (vehicles, locations, orders). Nothing is sent to a server, but share the link only with people who may see this data.',
 }

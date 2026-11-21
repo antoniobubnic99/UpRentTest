@@ -104,9 +104,10 @@ Zahtjevi: četiri jezika, strelice za zatvaranje i proširenje ulaznih podataka,
    - KPI „Ravnomjerna raspodjela” se rezao
 
 6. **Excel umjesto CSV-a (Antonijev zahtjev nakon pregleda):** jedan list po sekciji, oblikovan kao tablica. Provjereno testovima (listovi, tablice, padajuća lista, uvoz u oba smjera, greške), preuzimanjem i ponovnim učitavanjem u headless pregledniku (200,1 km) te otvaranjem datoteke u LibreOfficeu.
-7. **Live provjera nakon deploya (Chrome):** podaci iz zadatka daju 200,1 km i prijedlog ravnomjerne raspodjele (217,0 km); primjer na stvarnoj karti daje brzine dionica 47–69 km/h, 505,6 km i „Sve OK”.
+7. **Sigurnost:** sigurnosna zaglavlja (CSP i ostala) provjerena su u pregledniku s istim zaglavljima kao u produkciji, prije pusha: stranica, Excel i karta rade, a preglednik ne javlja nijednu blokadu. Ograničenja uvoza imaju testove, a `npm audit` je čist.
+8. **Live provjera nakon deploya (Chrome):** podaci iz zadatka daju 200,1 km i prijedlog ravnomjerne raspodjele (217,0 km); primjer na stvarnoj karti daje brzine dionica 47–69 km/h, 505,6 km i „Sve OK”.
 
-Ukupno je **208 testova**, a svi prolaze.
+Ukupno je **210 testova**, a svi prolaze.
 
 ## Zaključak
 

@@ -48,9 +48,10 @@ Predviđeno trajanje zadatka: **6 h**.
 | 21.11.2026. | 08:10–08:20 | 0 h 10 min | Vizualna provjera na tri jezika i na mobitelu, ispravci, dokumentacija |
 | 21.11.2026. | 08:17–08:22 | 0 h 05 min | Push, Vercel deploy, live provjera (brzina po relaciji 47–69 km/h) |
 | 21.11.2026. | 08:25–08:40 | 0 h 15 min | Excel predložak: list po sekciji, oblikovan kao tablica, padajuće liste; testovi i provjera |
-| | | **0 h 59 min** | |
+| 21.11.2026. | 09:31–09:50 | 0 h 19 min | Sigurnost (zaglavlja, ograničenja uvoza, upozorenje uz link, ovisnosti), sređivanje dokumentacije, push, priprema predaje |
+| | | **1 h 18 min** | |
 
-**Ukupno (faze 1–4): ≈ 3 h 48 min**
+**Ukupno (faze 1–4): ≈ 4 h 07 min**
 
 ## Napomena
 

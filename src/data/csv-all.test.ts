@@ -103,3 +103,21 @@ describe('one CSV with vehicles, locations and orders', () => {
     expect(problemsOf(() => importAllCsv(emptyInput(), '#VOZILA\nid\n#VOZILA\nid\n'))[0]).toContain('dvaput')
   })
 })
+
+describe('import limits (a broken or hostile file must not freeze the browser)', () => {
+  it('files over 5 MB are refused', async () => {
+    const { checkFileSize, MAX_FILE_BYTES } = await import('./io')
+    expect(() => checkFileSize(MAX_FILE_BYTES)).not.toThrow()
+    expect(() => checkFileSize(MAX_FILE_BYTES + 1)).toThrow('Datoteka je prevelika')
+  })
+
+  it('more than 2000 rows in a section are refused (CSV and JSON)', async () => {
+    const { MAX_ROWS, importJson } = await import('./io')
+    const rows = Array.from({ length: MAX_ROWS + 1 }, (_, i) => `L${i};L${i};${i};0`).join('\n')
+    expect(problemsOf(() => importAllCsv(emptyInput(), `#LOKACIJE\nid;naziv;x_km;y_km\n${rows}\n`))[0]).toContain(
+      'Previše redaka (LOKACIJE: 2001)',
+    )
+    const big = JSON.stringify({ trucks: Array.from({ length: MAX_ROWS + 1 }, (_, i) => ({ id: `T${i}` })) })
+    expect(() => importJson(big)).toThrow('Previše redaka')
+  })
+})

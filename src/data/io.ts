@@ -13,6 +13,17 @@ import type { Location, Machine, Order, ProblemInput, Settings, Truck } from '..
  */
 
 export const FORMAT = 'uprent-logistics-planner'
+
+/** Largest file accepted for import (Excel, CSV, JSON): keeps a broken or hostile file from freezing the browser. */
+export const MAX_FILE_BYTES = 5 * 1024 * 1024
+/** Most rows accepted per section (vehicles, locations, orders). */
+export const MAX_ROWS = 2000
+
+/** Throws when a file is larger than MAX_FILE_BYTES. */
+export function checkFileSize(bytes: number) {
+  if (bytes > MAX_FILE_BYTES)
+    throw new ImportError([tr('io.tooBig', { mb: Math.round((bytes / 1024 / 1024) * 10) / 10, max: MAX_FILE_BYTES / 1024 / 1024 })])
+}
 export const VERSION = 1
 
 export class ImportError extends Error {
@@ -56,6 +67,7 @@ export function inputFromUnknown(raw: unknown): ProblemInput {
       problems.push(tr('io.notList', { key }))
       return []
     }
+    if (v.length > MAX_ROWS) throw new ImportError([tr('io.tooManyRows', { what: key, n: v.length, max: MAX_ROWS })])
     return v.filter((x, i) => {
       if (!isObj(x)) problems.push(tr('io.badRecord', { key, i }))
       return isObj(x)
@@ -537,6 +549,9 @@ export function importSections(
   input: ProblemInput,
   parts: Map<Section, CsvRow[]>,
 ): { input: ProblemInput; toGeocode: string[]; sections: CsvKind[] } {
+  for (const [sec, rows] of parts)
+    if (rows.length - 1 > MAX_ROWS)
+      throw new ImportError([tr('io.tooManyRows', { what: SECTION_NAMES[sec][LANG_INDEX[getLang()]], n: rows.length - 1, max: MAX_ROWS })])
   const problems: string[] = []
   const tryTable = (sec: Section, required: string[]): Table | null => {
     const p = parts.get(sec)
